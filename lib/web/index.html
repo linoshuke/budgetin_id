@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link icon" href="/assets/icons/kelola-uang.png">
+    <title>Kelola Uang - Ambil Kendali Penuh Atas Keuangan Anda</title>
+    <meta name="description" content="Aplikasi manajemen keuangan sederhana untuk mencatat pemasukan, pengeluaran, membuat anggaran, dan mencapai target tabungan Anda. Tersedia di Android.">
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --secondary-color: #198754;
+            --dark-blue: #1e293b;
+            --slate: #64748b;
+            --light-bg: #f8f9fa;
+            --white: #ffffff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            background-color: var(--white);
+            color: #475569;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        header {
+            background: var(--white);
+            padding: 20px 0;
+            border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        header .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--dark-blue);
+            text-decoration: none;
+        }
+
+        /* Hero Section */
+        .hero {
+            background-color: var(--light-bg);
+            text-align: center;
+            padding: 80px 20px;
+        }
+        .hero h1 {
+            font-size: 3em;
+            color: var(--dark-blue);
+            margin-bottom: 15px;
+            line-height: 1.2;
+        }
+        .hero p {
+            font-size: 1.2em;
+            color: var(--slate);
+            max-width: 600px;
+            margin: 0 auto 30px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 15px 35px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: var(--white);
+            box-shadow: 0 4px 15px rgba(13, 110, 253, 0.2);
+        }
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 20px rgba(13, 110, 253, 0.3);
+        }
+        
+        /* Features Section */
+        .features {
+            padding: 80px 20px;
+            background-color: var(--white);
+        }
+        .section-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        .section-header h2 {
+            font-size: 2.5em;
+            color: var(--dark-blue);
+            margin-bottom: 10px;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+        }
+        .feature-card {
+            background: var(--light-bg);
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        .feature-card .icon {
+            font-size: 3em;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+        .feature-card h3 {
+            font-size: 1.4em;
+            color: var(--dark-blue);
+            margin-bottom: 10px;
+        }
+
+        /* Coming Soon Section */
+        .coming-soon {
+            background-color: var(--dark-blue);
+            color: var(--white);
+            text-align: center;
+            padding: 60px 20px;
+        }
+        .coming-soon h2 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        .coming-soon p {
+            color: #cbd5e1;
+            font-size: 1.1em;
+        }
+
+        /* Footer */
+        footer {
+            background-color: #1e293b;
+            color: #94a3b8;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .footer-links {
+            margin-bottom: 20px;
+        }
+        .footer-links a {
+            color: #cbd5e1;
+            text-decoration: none;
+            margin: 0 15px;
+            transition: color 0.2s;
+        }
+        .footer-links a:hover {
+            color: var(--white);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.5em; }
+            .section-header h2 { font-size: 2em; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="container">
+            <a href="/" class="logo">💰 Kelola Uang</a>
+            <!-- Anda bisa menambahkan tombol login di sini nanti -->
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h1>Ambil Kendali Penuh Atas Keuangan Anda</h1>
+            <p>Berhenti bertanya-tanya ke mana uang Anda pergi. Lacak setiap pemasukan dan pengeluaran dengan mudah, rencanakan masa depan, dan capai tujuan finansial Anda.</p>
+            <a href="#download" class="btn btn-primary">Unduh Aplikasi Sekarang</a>
+            <!-- Ganti #download dengan link Google Play Store Anda nanti -->
+        </section>
+
+        <section class="features">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Semua yang Anda Butuhkan dalam Satu Aplikasi</h2>
+                </div>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="icon">📝</div>
+                        <h3>Pencatatan Cepat</h3>
+                        <p>Catat transaksi pemasukan dan pengeluaran hanya dalam hitungan detik. Tidak ada lagi yang terlewat.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">📊</div>
+                        <h3>Statistik Intuitif</h3>
+                        <p>Pahami kebiasaan finansial Anda melalui grafik dan laporan yang mudah dibaca dan interaktif.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">🎯</div>
+                        <h3>Anggaran Fleksibel</h3>
+                        <p>Buat anggaran bulanan untuk setiap kategori pengeluaran dan dapatkan notifikasi agar tetap di jalur.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">🐷</div>
+                        <h3>Target Tabungan</h3>
+                        <p>Tetapkan tujuan (beli gadget baru, liburan) dan pantau kemajuan tabungan Anda secara visual.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="coming-soon">
+            <div class="container">
+                <h2>Segera Hadir di Perangkat Anda yang Lain!</h2>
+                <p>Saat ini kami fokus memberikan pengalaman terbaik di Android. Versi web dengan fitur lengkap sedang dalam pengembangan agar Anda bisa mengelola keuangan di mana saja.</p>
+            </div>
+        </section>
+        
+        <!-- Anda bisa menambahkan bagian lain seperti testimoni di sini -->
+
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-links">
+                <a href="/ketentuan-layanan.html">Ketentuan Layanan</a>
+                <a href="/privacy_policy.html">Kebijakan Privasi</a> <!-- Ganti ini jika nama file Anda index.html -->
+                <a href="/hapus-data.html">Petunjuk Penghapusan Data</a>
+            </div>
+            <p>© 2025 Kelola Uang. Dibuat untuk membantu Anda meraih kebebasan finansial.</p>
+        </div>
+    </footer>
+
+</body>
+</html>

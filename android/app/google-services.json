@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "412881082749",
+    "project_id": "budgetin-id",
+    "storage_bucket": "budgetin-id.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:412881082749:android:4681471c2ba72bc1745414",
+        "android_client_info": {
+          "package_name": "com.lino.budgetin_id"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB4alJ7AsETXAfnmdQHxcnW9MSdFfhNhNc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

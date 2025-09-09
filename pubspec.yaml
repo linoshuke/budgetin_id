@@ -1,0 +1,51 @@
+name: budgetin_id
+description: "Project UKK (Uji Kompetensi Keahlian)"
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase (Versi terbaru yang stabil)
+  firebase_core: ^2.32.0
+  firebase_auth: ^4.20.0
+  cloud_firestore: ^4.17.5
+  firebase_storage: ^11.7.7
+  
+   # Utilities
+   
+  #Package untuk menyimpan data di perangkat
+  shared_preferences: ^2.2.3 
+     
+  # Package untuk format tanggal
+  intl: ^0.20.2
+
+  # Layanan Google & State Management
+  google_sign_in: ^6.2.1
+  provider: ^6.1.2
+  image_picker: ^1.1.2
+
+  # Untuk generate ID unik 
+  uuid: ^4.5.1  
+  
+  # Ikon
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+
+flutter:
+
+  uses-material-design: true
+
+  # To add assets to your application, add an assets section, like this:
+  assets:
+      - assets/icons/
