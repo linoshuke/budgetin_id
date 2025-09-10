@@ -1,6 +1,6 @@
 # budgetin_id
 
-A new Flutter project.
+Project for UKK
 
 ## Getting Started
 

@@ -1,7 +1,7 @@
 // lib/pages/login_screen.dart
 
 import 'package:flutter/material.dart';
-import '/services/auth_service.dart';
+import 'service/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '/pages/auth/signup_screen.dart';
 

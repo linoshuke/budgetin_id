@@ -12,7 +12,20 @@
           "package_name": "com.lino.budgetin_id"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "412881082749-dlrq3e9slh4caafqhn0fi1s1ghnv16s0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.lino.budgetin_id",
+            "certificate_hash": "85f4875db8bdf30fc7f7368bb52f82aadf2a349b"
+          }
+        },
+        {
+          "client_id": "412881082749-fr6gidl0m2gbo5er3bpkptfvqn79h1b8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyB4alJ7AsETXAfnmdQHxcnW9MSdFfhNhNc"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "412881082749-fr6gidl0m2gbo5er3bpkptfvqn79h1b8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "412881082749-n0sllbthcb9hv0loauracepunm528g76.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.budgetinId"
+              }
+            }
+          ]
         }
       }
     }

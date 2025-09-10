@@ -1,5 +1,6 @@
+// wallet_screen.dart (NO CHANGES NEEDED)
 import 'package:flutter/material.dart';
-import '/models/wallet_model.dart';
+import 'widgets/models/wallet_model.dart';
 import '/pages/account_router.dart';
 import '/services/firestore_service.dart';
 import 'package:provider/provider.dart';
@@ -58,9 +59,7 @@ class WalletsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Daftar Wallet"),
-        actions: const [
-          AccountActionButton(),
-        ],
+        actions: const [AccountRouter()],
       ),
       body: StreamBuilder<List<Wallet>>(
         stream: firestoreService.getWallets(),

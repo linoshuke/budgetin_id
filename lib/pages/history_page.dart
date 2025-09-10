@@ -11,7 +11,7 @@ class HistoryPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Riwayat'),
         actions: const [
-          AccountActionButton(), // Tambahkan ini
+          AccountRouter(), // Tambahkan ini
         ],
       ),
       body: const Center(

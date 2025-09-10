@@ -1,17 +1,61 @@
+// wallet_card.dart (REVISED)
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '/models/wallet_model.dart';
+import 'models/wallet_model.dart';
 import '/services/firestore_service.dart';
 import 'package:provider/provider.dart';
 import '/pages/wallets/widgets/wallet_detail.dart';
 
-class WalletCard extends StatelessWidget {
+class WalletCard extends StatefulWidget {
   final Wallet wallet;
 
   const WalletCard({super.key, required this.wallet});
 
+  @override
+  State<WalletCard> createState() => _WalletCardState();
+}
+
+class _WalletCardState extends State<WalletCard> {
+  late Stream<Map<String, double>> _statsStream;
+
+  @override
+  void initState() {
+    super.initState();
+    // Inisialisasi stream sekali saat widget pertama kali dibuat.
+    // 'listen: false' penting di initState untuk menghindari error.
+    final firestoreService = Provider.of<FirestoreService>(
+      context,
+      listen: false,
+    );
+    _statsStream = firestoreService.getWalletStatsStream(
+      widget.wallet.id,
+      widget.wallet.displayPreference,
+    );
+  }
+
+  // Tambahkan ini untuk menangani perubahan jika ada update dari parent
+  @override
+  void didUpdateWidget(covariant WalletCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Jika displayPreference berubah, kita perlu membuat stream baru
+    if (widget.wallet.displayPreference != oldWidget.wallet.displayPreference) {
+      final firestoreService = Provider.of<FirestoreService>(
+        context,
+        listen: false,
+      );
+      setState(() {
+        _statsStream = firestoreService.getWalletStatsStream(
+          widget.wallet.id,
+          widget.wallet.displayPreference,
+        );
+      });
+    }
+  }
+
   void _showEditWalletDialog(BuildContext context) {
-    final TextEditingController nameController = TextEditingController(text: wallet.walletName);
+    final TextEditingController nameController = TextEditingController(
+      text: widget.wallet.walletName,
+    );
     final formKey = GlobalKey<FormState>();
 
     showDialog(
@@ -41,7 +85,10 @@ class WalletCard extends StatelessWidget {
               onPressed: () {
                 if (formKey.currentState!.validate()) {
                   final firestoreService = context.read<FirestoreService>();
-                  firestoreService.updateWalletName(wallet.id, nameController.text.trim());
+                  firestoreService.updateWalletName(
+                    widget.wallet.id,
+                    nameController.text.trim(),
+                  );
                   Navigator.of(context).pop();
                 }
               },
@@ -55,14 +102,19 @@ class WalletCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-    final firestoreService = Provider.of<FirestoreService>(context, listen: false);
+    final currencyFormatter = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
 
     return GestureDetector(
       onTap: () {
-        Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => WalletDetailScreen(walletId: wallet.id),
-        ));
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => WalletDetailScreen(walletId: widget.wallet.id),
+          ),
+        );
       },
       child: Container(
         height: 200,
@@ -93,32 +145,72 @@ class WalletCard extends StatelessWidget {
                 children: [
                   Flexible(
                     child: Text(
-                      wallet.walletName,
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                      widget.wallet.walletName,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   GestureDetector(
                     onTap: () => _showEditWalletDialog(context),
-                    child: const Icon(Icons.edit, size: 22, color: Colors.white70),
+                    child: const Icon(
+                      Icons.edit,
+                      size: 22,
+                      color: Colors.white70,
+                    ),
                   ),
                 ],
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Total Saldo", style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14)),
                   Text(
-                    currencyFormatter.format(wallet.balance),
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 1.2),
+                    "Total Saldo",
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 14,
+                    ),
+                  ),
+                  Text(
+                    currencyFormatter.format(widget.wallet.balance),
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      letterSpacing: 1.2,
+                    ),
                   ),
                 ],
               ),
+              // Gunakan stream yang sudah disimpan di state (_statsStream)
               StreamBuilder<Map<String, double>>(
-                stream: firestoreService.getWalletStatsStream(wallet.id, wallet.displayPreference),
+                stream: _statsStream,
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData || snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)));
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      ),
+                    );
+                  }
+
+                  // Tambahkan penanganan error
+                  if (snapshot.hasError) {
+                    return const Center(
+                      child: Icon(
+                        Icons.error_outline,
+                        color: Colors.white70,
+                        size: 20,
+                      ),
+                    );
                   }
 
                   final income = snapshot.data?['income'] ?? 0;
@@ -131,8 +223,18 @@ class WalletCard extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildStatItem(Icons.arrow_upward, Colors.greenAccent, "Pemasukan", currencyFormatter.format(income)),
-                          _buildStatItem(Icons.arrow_downward, Colors.redAccent, "Pengeluaran", currencyFormatter.format(expense.abs())),
+                          _buildStatItem(
+                            Icons.arrow_upward,
+                            Colors.greenAccent,
+                            "Pemasukan",
+                            currencyFormatter.format(income),
+                          ),
+                          _buildStatItem(
+                            Icons.arrow_downward,
+                            Colors.redAccent,
+                            "Pengeluaran",
+                            currencyFormatter.format(expense.abs()),
+                          ),
                         ],
                       ),
                     ],
@@ -146,7 +248,12 @@ class WalletCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatItem(IconData icon, Color color, String label, String value) {
+  Widget _buildStatItem(
+    IconData icon,
+    Color color,
+    String label,
+    String value,
+  ) {
     return Row(
       children: [
         Icon(icon, color: color, size: 18),
@@ -154,10 +261,23 @@ class WalletCard extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
-            Text(value, style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w600)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white.withValues(alpha: 0.8),
+              ),
+            ),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
-        )
+        ),
       ],
     );
   }

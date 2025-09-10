@@ -2,10 +2,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '/pages/auth/login_screen.dart';
 import '/pages/setting_page.dart';
-import '/services/auth_service.dart';
+import 'auth/service/auth_service.dart';
 
-class AccountActionButton extends StatelessWidget {
-  const AccountActionButton({super.key});
+class AccountRouter extends StatelessWidget {
+  const AccountRouter ({super.key});
 
   @override
   Widget build(BuildContext context) {

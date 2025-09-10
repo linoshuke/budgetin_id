@@ -1,9 +1,11 @@
 // lib/main.dart
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/date_symbol_data_local.dart'; // Import untuk lokalisasi tanggal
-import 'pages/auth/auth_wrapper.dart';
-import 'services/auth_service.dart';
+import 'package:intl/date_symbol_data_local.dart';
+// [REVISI] Hapus impor AuthWrapper karena tidak digunakan di sini lagi
+// import 'pages/auth/auth_wrapper.dart'; 
+import 'pages/home_page.dart'; // [REVISI] Impor HomePage sebagai halaman utama
+import 'pages/auth/service/auth_service.dart';
 import 'services/firestore_service.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
@@ -13,8 +15,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  // Inisialisasi lokalisasi untuk format tanggal Indonesia
-  await initializeDateFormatting('id_ID', null); 
+  await initializeDateFormatting('id_ID', null);
   runApp(const MyApp());
 }
 
@@ -29,7 +30,7 @@ class MyApp extends StatelessWidget {
         Provider<FirestoreService>(create: (_) => FirestoreService()),
       ],
       child: MaterialApp(
-        title: 'Kelola Uang',
+        title: 'Budgetin',
         theme: ThemeData(
           primarySwatch: Colors.indigo,
           visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -50,7 +51,9 @@ class MyApp extends StatelessWidget {
           ),
         ),
         debugShowCheckedModeBanner: false,
-        home: const AuthWrapper(),
+        // [REVISI UTAMA] Mengganti AuthWrapper menjadi HomePage
+        // Aplikasi sekarang akan selalu terbuka di halaman beranda
+        home: const HomePage(), 
       ),
     );
   }

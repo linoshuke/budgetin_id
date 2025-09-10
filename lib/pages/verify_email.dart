@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '/services/auth_service.dart';
+import 'auth/service/auth_service.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
   // Tambahkan callback untuk memberi tahu induknya jika sudah terverifikasi

@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart' hide Transaction;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/transaction_model.dart';
-import '../models/wallet_model.dart';
+import '../pages/wallets/widgets/models/wallet_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;

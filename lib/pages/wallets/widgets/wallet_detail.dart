@@ -1,10 +1,11 @@
+// wallet_detail.dart (REVISED)
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '/models/transaction_model.dart';
-import '/models/wallet_model.dart';
+import 'models/wallet_model.dart';
 import '/services/firestore_service.dart';
-import '/pages/thousand_formatter.dart';
+import '../thousand_formatter.dart';
 import 'package:provider/provider.dart';
 
 enum DisplayPeriod { monthly, daily }
@@ -177,6 +178,21 @@ class _WalletDetailScreenState extends State<WalletDetailScreen> {
                     if (transactionSnapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
+                    
+                    // KRUSIAL: Tambahkan penanganan error
+                    if (transactionSnapshot.hasError) {
+                      debugPrint("Error fetching transactions: ${transactionSnapshot.error}");
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(
+                            "Terjadi kesalahan saat memuat transaksi. Kemungkinan Anda perlu membuat index di Firestore. Cek log untuk detail.",
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      );
+                    }
+                    
                     if (!transactionSnapshot.hasData || transactionSnapshot.data!.isEmpty) {
                       return const Center(child: Text("Belum ada transaksi pada periode ini."));
                     }

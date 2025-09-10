@@ -10,7 +10,7 @@ class StatisticsPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Statistik'),
       actions: const [
-          AccountActionButton(), // Tambahkan widget aksi akun
+          AccountRouter(), // Tambahkan widget aksi akun
         ],
       ),
       body: const Center(
