@@ -1,4 +1,4 @@
-// lib/pages/home_page.dart (REVISED)
+// lib/pages/home_page.dart 
 
 import 'dart:async'; // Diperlukan untuk StreamSubscription
 import 'package:budgetin_id/pages/more_page.dart';
@@ -25,16 +25,12 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
 
-  // Navigasi ke halaman 'Lainnya' akan dihandle di sini
-
   static final List<Widget> _widgetOptions = <Widget>[
     const HomeContent(),
     const HistoryPage(),
     const WalletsScreen(),
     const StatisticsPage(),
-    MorePage(onGoToHome: () {
-      // Fungsi ini belum diimplementasikan, tapi strukturnya sudah benar
-    }),
+    MorePage(onGoToHome: () {}),
   ];
 
   void _onItemTapped(int index) {
@@ -106,7 +102,6 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// [REVISI] HomeContent diubah menjadi StatefulWidget
 class HomeContent extends StatefulWidget {
   const HomeContent({super.key});
 
@@ -115,13 +110,10 @@ class HomeContent extends StatefulWidget {
 }
 
 class _HomeContentState extends State<HomeContent> {
-  // State untuk menyimpan daftar dompet dan pilihan pengguna
   List<Wallet> _allWallets = [];
-  List<String> _selectedWalletIds = []; // Jika kosong, berarti "semua dompet"
+  List<String> _selectedWalletIds = [];
   double _totalBalance = 0.0;
   bool _isLoading = true;
-
-  // StreamSubscription untuk mendengarkan perubahan pada dompet
   StreamSubscription<List<Wallet>>? _walletSubscription;
 
   @override
@@ -129,10 +121,9 @@ class _HomeContentState extends State<HomeContent> {
     super.initState();
     _listenToWallets();
   }
-  
+
   @override
   void dispose() {
-    // Batalkan subscription untuk mencegah memory leak
     _walletSubscription?.cancel();
     super.dispose();
   }
@@ -153,28 +144,19 @@ class _HomeContentState extends State<HomeContent> {
   void _calculateTotalBalance() {
     double sum = 0;
     if (_selectedWalletIds.isEmpty) {
-      // Jika tidak ada yang dipilih, hitung semua
-      for (var wallet in _allWallets) {
-        sum += wallet.balance;
-      }
+      sum = _allWallets.fold(0, (prev, wallet) => prev + wallet.balance);
     } else {
-      // Jika ada yang dipilih, hanya hitung yang terpilih
-      for (var wallet in _allWallets) {
-        if (_selectedWalletIds.contains(wallet.id)) {
-          sum += wallet.balance;
-        }
-      }
+      sum = _allWallets
+          .where((wallet) => _selectedWalletIds.contains(wallet.id))
+          .fold(0, (prev, wallet) => prev + wallet.balance);
     }
     setState(() {
       _totalBalance = sum;
     });
   }
-  
-  // [BARU] Fungsi untuk menampilkan dialog pemilihan dompet
-  Future<void> _showWalletSelectionDialog() async {
-    // Salin daftar ID yang sudah terpilih ke variabel sementara
-    final List<String> tempSelectedIds = List.from(_selectedWalletIds);
 
+  Future<void> _showWalletSelectionDialog() async {
+    final List<String> tempSelectedIds = List.from(_selectedWalletIds);
     await showDialog(
       context: context,
       builder: (context) {
@@ -215,7 +197,6 @@ class _HomeContentState extends State<HomeContent> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    // Update state utama dengan pilihan dari dialog
                     setState(() {
                       _selectedWalletIds = tempSelectedIds;
                     });
@@ -250,7 +231,7 @@ class _HomeContentState extends State<HomeContent> {
             children: [
               _buildGreeting(),
               const SizedBox(height: 24),
-              _buildTotalBalanceCard(), // Widget ini sekarang dinamis
+              _buildTotalBalanceCard(),
               const SizedBox(height: 24),
               _buildDailySummaryCard(),
               const SizedBox(height: 24),
@@ -279,24 +260,24 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  // [REVISI] Kartu total saldo sekarang interaktif
+  // [REVISI] Kartu total saldo sekarang memiliki indikator aksi yang jelas
   Widget _buildTotalBalanceCard() {
     final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     final String subtitle = _selectedWalletIds.isEmpty
-        ? 'Semua Dompet'
-        : '${_selectedWalletIds.length} Dompet Terpilih';
+        ? 'Total Saldo (Semua Dompet)'
+        : 'Total Saldo (${_selectedWalletIds.length} Dompet Terpilih)';
 
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell( // Dibungkus dengan InkWell agar bisa diklik
+      clipBehavior: Clip.antiAlias, // Penting agar InkWell tidak keluar dari border radius
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
         onTap: _showWalletSelectionDialog,
-        borderRadius: BorderRadius.circular(12),
         child: Container(
+          height: 180, // Beri tinggi tetap agar layout konsisten
           width: double.infinity,
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
             gradient: LinearGradient(
               colors: [Colors.indigo.shade400, Colors.indigo.shade700],
               begin: Alignment.topLeft,
@@ -306,23 +287,46 @@ class _HomeContentState extends State<HomeContent> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Subtitle dinamis
               Text(
                 subtitle,
                 style: const TextStyle(color: Colors.white70, fontSize: 16),
               ),
               const SizedBox(height: 8),
-              // Tampilkan loading atau total saldo
               _isLoading
-                  ? const SizedBox(height: 38, child: Center(child: CircularProgressIndicator(color: Colors.white)))
+                  ? const Center(child: CircularProgressIndicator(color: Colors.white))
                   : Text(
                       currencyFormatter.format(_totalBalance),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
                       ),
                     ),
+              const Spacer(), // Pendorong ke bawah
+              
+              // [BARU] Indikator Aksi / Call-to-Action
+              Align(
+                alignment: Alignment.center,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.touch_app_outlined, color: Colors.white70, size: 16),
+                      SizedBox(width: 8),
+                      Text(
+                        'Ketuk untuk memilih dompet',
+                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),

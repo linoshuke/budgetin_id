@@ -24,7 +24,44 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // UPDATE NAMA TAMPILAN (Tidak Berubah)
+  // [PERBAIKAN] Fungsi deleteAccount menjadi lebih sederhana
+  Future<void> deleteAccount() async {
+    _setLoading(true);
+    try {
+      await _authService.deleteUserAccount();
+      // Navigasi akan ditangani oleh AuthWrapper secara otomatis
+    } on FirebaseAuthException {
+      _setLoading(false); // Pastikan loading berhenti jika ada error
+      rethrow; // Lempar lagi agar UI bisa menangani
+    }
+  }
+
+  // [BARU] Fungsi untuk handle re-autentikasi lalu menghapus
+  Future<void> reauthenticateAndDelete({String? password}) async {
+    if (user == null) return;
+    _setLoading(true);
+
+    try {
+      final providerId = user!.providerData.first.providerId;
+
+      if (providerId == 'password' && password != null) {
+        await _authService.reauthenticateWithPassword(password);
+      } else if (providerId == 'google.com') {
+        await _authService.reauthenticateWithGoogle();
+      } else {
+        throw Exception("Metode re-autentikasi tidak didukung.");
+      }
+
+      // Jika re-autentikasi berhasil, coba hapus lagi
+      await _authService.deleteUserAccount();
+    } catch (e) {
+      _setLoading(false);
+      debugPrint('Error saat re-autentikasi dan hapus: $e');
+      rethrow;
+    }
+  }
+
+  // --- Sisa Kode Anda (tidak perlu diubah) ---
   Future<void> updateDisplayName(String newName) async {
     if (user == null || newName.trim().isEmpty) return;
     _setLoading(true);
@@ -39,7 +76,6 @@ class SettingsProvider with ChangeNotifier {
     }
   }
 
-  // PILIH DAN UPLOAD FOTO PROFIL 
   Future<void> pickAndUploadProfileImage() async {
     if (user == null) return;
     _setLoading(true);
@@ -61,28 +97,13 @@ class SettingsProvider with ChangeNotifier {
     }
   }
 
-  //  HAPUS AKUN
-  Future<void> deleteAccount() async {
-    _setLoading(true);
-    try {
-      await _authService.deleteUserAccount();
-      // Navigasi akan ditangani oleh AuthWrapper secara otomatis
-    } catch (e) {
-      debugPrint('e = $e'); 
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  // Fungsi untuk login dengan Google
   Future<void> linkWithGoogle() async {
     _setLoading(true);
     try {
       await _authService.linkWithGoogle();
       notifyListeners(); 
     } catch (e) {
-      debugPrint('e = $e'); // Handle error, misal: akun Google sudah tertaut ke user lain
+      debugPrint('e = $e');
     } finally {
       _setLoading(false);
     }

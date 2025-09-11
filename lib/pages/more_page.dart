@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 
 class MorePage extends StatelessWidget {
-  // Terima callback function dari parent (MainScreen)
+  // Terima callback function dari parent 
   final VoidCallback onGoToHome;
     const MorePage({
     super.key,

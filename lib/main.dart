@@ -2,9 +2,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
-// [REVISI] Hapus impor AuthWrapper karena tidak digunakan di sini lagi
-// import 'pages/auth/auth_wrapper.dart'; 
-import 'pages/home_page.dart'; // [REVISI] Impor HomePage sebagai halaman utama
+import 'pages/home_page.dart'; 
 import 'pages/auth/service/auth_service.dart';
 import 'services/firestore_service.dart';
 import 'package:provider/provider.dart';
@@ -51,8 +49,6 @@ class MyApp extends StatelessWidget {
           ),
         ),
         debugShowCheckedModeBanner: false,
-        // [REVISI UTAMA] Mengganti AuthWrapper menjadi HomePage
-        // Aplikasi sekarang akan selalu terbuka di halaman beranda
         home: const HomePage(), 
       ),
     );

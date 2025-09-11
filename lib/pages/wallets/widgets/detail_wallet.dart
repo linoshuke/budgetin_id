@@ -22,7 +22,7 @@ class WalletDetailScreen extends StatefulWidget {
 class _WalletDetailScreenState extends State<WalletDetailScreen> {
   late DateTime _selectedMonth;
   late DateTimeRange _currentDateRange;
-  DisplayPeriod _selectedPeriod = DisplayPeriod.monthly;
+  final DisplayPeriod _selectedPeriod = DisplayPeriod.monthly;
 
   @override
   void initState() {
@@ -159,7 +159,6 @@ class _WalletDetailScreenState extends State<WalletDetailScreen> {
           body: Column(
             children: [
               _buildHeader(context, wallet, currencyFormatter, firestoreService),
-              _buildTransactionFilter(),
               if (_selectedPeriod == DisplayPeriod.monthly) _buildMonthNavigator(),
               const Padding(
                 padding: EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 8.0),
@@ -262,28 +261,6 @@ class _WalletDetailScreenState extends State<WalletDetailScreen> {
               children: const [Text("Harian"), Text("Bulanan")],
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTransactionFilter() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: SegmentedButton<DisplayPeriod>(
-        segments: const [
-          ButtonSegment(value: DisplayPeriod.monthly, label: Text("Bulanan"), icon: Icon(Icons.calendar_month)),
-          ButtonSegment(value: DisplayPeriod.daily, label: Text("Harian"), icon: Icon(Icons.today)),
-        ],
-        selected: {_selectedPeriod},
-        onSelectionChanged: (newSelection) {
-          setState(() {
-            _selectedPeriod = newSelection.first;
-            _updateDateRange();
-          });
-        },
-        style: SegmentedButton.styleFrom(
-          fixedSize: Size(MediaQuery.of(context).size.width, 40),
         ),
       ),
     );

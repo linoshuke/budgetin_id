@@ -6,6 +6,8 @@ class Wallet {
   double balance;
   final String displayPreference; // 'daily' atau 'monthly'
   final DateTime createdAt;
+  final String category;
+  final String location;
 
   Wallet({
     required this.id,
@@ -13,6 +15,8 @@ class Wallet {
     this.balance = 0.0,
     this.displayPreference = 'monthly',
     required this.createdAt,
+     required this.category, 
+    required this.location, 
   });
 
   // Factory constructor untuk membuat instance Wallet dari Firestore document
@@ -24,6 +28,8 @@ class Wallet {
       balance: (data['balance'] ?? 0).toDouble(),
       displayPreference: data['displayPreference'] ?? 'monthly',
       createdAt: (data['createdAt'] as Timestamp).toDate(),
+      category: data['category'] ?? 'Lainnya', 
+      location: data['location'] ?? 'Tidak Diketahui', 
     );
   }
 
