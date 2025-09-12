@@ -1,8 +1,8 @@
-// lib/presentation/pages/signup_screen.dart
+// lib/pages/auth/signup_screen.dart (REVISED & FIXED)
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'service/auth_service.dart';
+import 'service/auth_service.dart'; // Pastikan path ini benar
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -40,7 +40,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Future<void> _handleSignUp() async {
-    // Sembunyikan keyboard jika terbuka
     FocusScope.of(context).unfocus();
 
     if (_formKey.currentState!.validate()) {
@@ -50,21 +49,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
       });
 
       try {
-        await _authService.signUpAndSendVerificationEmail(
+        // [PERBAIKAN] Menggunakan fungsi baru yang sudah kita definisikan
+        await _authService.signUpAndSignOut(
           _emailController.text.trim(),
           _passwordController.text.trim(),
         );
 
         if (mounted) {
-          // Kembali ke halaman login agar pengguna bisa login setelah verifikasi
           Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                'Registrasi berhasil! Link verifikasi telah dikirim. MOHON PERIKSA FOLDER INBOX & SPAM.',
+                'Registrasi berhasil! Link verifikasi telah dikirim ke email Anda.',
               ),
               backgroundColor: Colors.green,
-              duration: Duration(seconds: 7),
+              duration: Duration(seconds: 5),
             ),
           );
         }
@@ -92,7 +91,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  // Tampilan diubah total agar sama dengan LoginScreen
+  // --- UI (Tidak ada perubahan, bisa gunakan kode Anda yang sudah ada) ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(

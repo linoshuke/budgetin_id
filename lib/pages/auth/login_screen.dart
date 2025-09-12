@@ -42,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     _setLoading(true);
     try {
-      await _authService.signUpWithEmailAndPassword(
+      await _authService.signInWithEmailAndPassword(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );

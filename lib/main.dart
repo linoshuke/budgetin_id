@@ -1,8 +1,10 @@
-// lib/main.dart
+// lib/main.dart (REVISED & FIXED)
+
+import 'package:budgetin_id/pages/auth/auth_wrapper.dart'; // [BARU] Import AuthWrapper
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'pages/home_page.dart'; 
+// Hapus import HomePage jika tidak digunakan langsung di sini
 import 'pages/auth/service/auth_service.dart';
 import 'services/firestore_service.dart';
 import 'package:provider/provider.dart';
@@ -26,12 +28,14 @@ class MyApp extends StatelessWidget {
       providers: [
         Provider<AuthService>(create: (_) => AuthService()),
         Provider<FirestoreService>(create: (_) => FirestoreService()),
+        // [OPSIONAL] Jika SettingsProvider dibutuhkan di banyak tempat, letakkan di sini.
+        // Jika tidak, biarkan di dalam SettingsPage saja.
       ],
       child: MaterialApp(
         title: 'Budgetin',
         theme: ThemeData(
-          primarySwatch: Colors.indigo,
-          visualDensity: VisualDensity.adaptivePlatformDensity,
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+          useMaterial3: true,
           scaffoldBackgroundColor: Colors.grey[50],
           appBarTheme: const AppBarTheme(
             backgroundColor: Colors.white,
@@ -44,12 +48,20 @@ class MyApp extends StatelessWidget {
             ),
           ),
           cardTheme: CardThemeData(
-            elevation: 4.0,
+            elevation: 1.0, // M3 cenderung menggunakan elevasi lebih subtle
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          filledButtonTheme: FilledButtonThemeData(
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+            ),
           ),
         ),
         debugShowCheckedModeBanner: false,
-        home: const HomePage(), 
+        home: const AuthWrapper(),
       ),
     );
   }

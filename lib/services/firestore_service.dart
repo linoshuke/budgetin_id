@@ -12,6 +12,13 @@ class FirestoreService {
 
   String? get _userId => _auth.currentUser?.uid;
 
+   Future<void> updateUserData(Map<String, dynamic> data) async {
+    if (_userId == null) return;
+    final userRef = _db.collection('users').doc(_userId);
+    // Gunakan merge: true untuk update field tanpa menimpa seluruh dokumen
+    await userRef.set(data, SetOptions(merge: true));
+  }
+
   // --- Metode Inisialisasi User ---
   Future<void> initializeUserData(User user) async {
     final userRef = _db.collection('users').doc(user.uid);
@@ -221,5 +228,5 @@ class FirestoreService {
     await batch.commit();
   }
 
-  Future<void> setUserData(String uid, Map<String, String> map) async {}
+
 }

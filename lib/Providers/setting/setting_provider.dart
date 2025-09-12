@@ -11,10 +11,13 @@ import '/services/storage_service.dart';
 class SettingsProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
-  final StorageService _storageService = StorageService();
+  final StorageService _storageService = StorageService(); // Asumsi Anda punya service ini
   final ImagePicker _picker = ImagePicker();
 
   User? get user => _authService.currentUser;
+  
+  // [BARU] Getter untuk memeriksa status anonim
+  bool get isAnonymous => user?.isAnonymous ?? false;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -22,6 +25,41 @@ class SettingsProvider with ChangeNotifier {
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
+  }
+  
+  // [BARU] Fungsi untuk menautkan dengan Email
+  Future<void> linkWithEmail(String email, String password) async {
+    _setLoading(true);
+    try {
+      await _authService.linkWithEmailAndPassword(email, password);
+      notifyListeners(); // Memberi tahu UI bahwa status user (isAnonymous) berubah
+    } catch (e) {
+      debugPrint('Error menautkan email di provider: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Fungsi linkWithGoogle yang sudah ada akan digunakan untuk menautkan juga
+  Future<void> linkWithGoogle() async {
+    _setLoading(true);
+    try {
+      await _authService.linkWithGoogle();
+      notifyListeners(); 
+    } catch (e) {
+      debugPrint('Error menautkan Google di provider: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> signOut() async {
+    _setLoading(true);
+    // Untuk pengguna anonim, signOut akan menghapus sesi mereka.
+    // Jika mereka kembali, sesi anonim baru akan dibuat.
+    await _authService.signOut();
   }
 
   // [PERBAIKAN] Fungsi deleteAccount menjadi lebih sederhana
@@ -67,7 +105,7 @@ class SettingsProvider with ChangeNotifier {
     _setLoading(true);
     try {
       await user!.updateDisplayName(newName);
-      await _firestoreService.setUserData(user!.uid, {'displayName': newName});
+      await _firestoreService.updateUserData({'displayName': newName});
       notifyListeners();
     } catch (e) {
       debugPrint('e');
@@ -88,29 +126,12 @@ class SettingsProvider with ChangeNotifier {
       
       final imageUrl = await _storageService.uploadProfileImage(user!.uid, File(image.path));
       await user!.updatePhotoURL(imageUrl);
-      await _firestoreService.setUserData(user!.uid, {'photoURL': imageUrl});
+      await _firestoreService.updateUserData({'photoURL': imageUrl});
       notifyListeners();
     } catch (e) {
       debugPrint('e = $e');
     } finally {
       _setLoading(false);
     }
-  }
-
-  Future<void> linkWithGoogle() async {
-    _setLoading(true);
-    try {
-      await _authService.linkWithGoogle();
-      notifyListeners(); 
-    } catch (e) {
-      debugPrint('e = $e');
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  Future<void> signOut() async {
-    _setLoading(true);
-    await _authService.signOut();
   }
 }
