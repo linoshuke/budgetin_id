@@ -1,8 +1,8 @@
-// lib/pages/auth/signup_screen.dart (REVISED & FIXED)
+// lib/pages/auth/signup_screen.dart 
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'service/auth_service.dart'; // Pastikan path ini benar
+import 'service/auth_service.dart'; // Sesuaikan path jika perlu
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -12,6 +12,7 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  // ... (properti lain tetap sama)
   final AuthService _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
 
@@ -38,32 +39,30 @@ class _SignUpScreenState extends State<SignUpScreen> {
       });
     }
   }
-
+  
   Future<void> _handleSignUp() async {
     FocusScope.of(context).unfocus();
 
     if (_formKey.currentState!.validate()) {
       _setLoading(true);
-      setState(() {
-        _errorMessage = null;
-      });
+      setState(() { _errorMessage = null; });
 
       try {
-        // [PERBAIKAN] Menggunakan fungsi baru yang sudah kita definisikan
-        await _authService.signUpAndSignOut(
+        // [REVISI] Memanggil fungsi baru yang tidak signOut
+        await _authService.signUpWithEmailAndPassword(
           _emailController.text.trim(),
           _passwordController.text.trim(),
         );
 
         if (mounted) {
-          Navigator.of(context).pop();
+          // Karena pengguna sekarang otomatis login, kita kembali ke halaman utama.
+          Navigator.of(context).popUntil((route) => route.isFirst);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                'Registrasi berhasil! Link verifikasi telah dikirim ke email Anda.',
+                'Registrasi berhasil! Link verifikasi telah dikirim.',
               ),
               backgroundColor: Colors.green,
-              duration: Duration(seconds: 5),
             ),
           );
         }
@@ -90,8 +89,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
       }
     }
   }
-
-  // --- UI (Tidak ada perubahan, bisa gunakan kode Anda yang sudah ada) ---
+  
+  // ... (Widget build() tetap sama persis, tidak perlu diubah)
   @override
   Widget build(BuildContext context) {
     return Scaffold(

@@ -39,7 +39,7 @@ class Wallet {
       walletName: data['walletName'] ?? 'Tanpa Nama',
       balance: (data['balance'] as num?)?.toDouble() ?? 0.0, // Cara aman lain untuk parsing angka
       displayPreference: data['displayPreference'] ?? 'monthly',
-      createdAt: createdAtDate, // Gunakan variabel yang sudah aman dari null
+      createdAt: createdAtDate, 
       category: data['category'] ?? 'Lainnya', 
       location: data['location'] ?? 'Tidak Diketahui', 
     );

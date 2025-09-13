@@ -12,113 +12,9 @@ class AuthService {
   Stream<User?> get authStateChanges => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
 
-  // [BARU] Fungsi untuk login secara anonim
-  Future<User?> signInAnonymously() async {
-    try {
-      final userCredential = await _auth.signInAnonymously();
-      final user = userCredential.user;
-      if (user != null) {
-        // Inisialisasi data di Firestore agar pengguna anonim bisa langsung
-        // membuat wallet, dll.
-        await FirestoreService().initializeUserData(user);
-      }
-      return user;
-    } catch (e) {
-      debugPrint("Error saat login anonim: $e");
-      rethrow;
-    }
-  }
-
-  // [BARU] Fungsi untuk menautkan akun anonim dengan Email & Password
-  Future<User?> linkWithGoogle() async {
-    try {
-      if (currentUser == null) {
-        throw Exception("Tidak ada pengguna untuk ditautkan.");
-      }
-
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return null;
-
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final userCredential = await currentUser!.linkWithCredential(credential);
-      final user = userCredential.user;
-
-      // ---- [BARU] Bagian Kritis untuk Memperbaiki Nama ----
-      if (user != null) {
-        // Jika nama pengguna saat ini masih default/kosong, update dengan nama Google
-        if ((user.displayName == null || user.displayName!.isEmpty) &&
-            googleUser.displayName != null) {
-          await user.updateDisplayName(googleUser.displayName);
-        }
-        // Jika foto profil saat ini kosong, update dengan foto Google
-        if ((user.photoURL == null || user.photoURL!.isEmpty) &&
-            googleUser.photoUrl != null) {
-          await user.updatePhotoURL(googleUser.photoUrl);
-        }
-        // Juga update data di Firestore
-        await FirestoreService().updateUserData({
-          'displayName': user.displayName,
-          'photoURL': user.photoURL,
-          'email': user.email, // Simpan juga emailnya
-        });
-      }
-      // ---------------------------------------------------
-
-      return user;
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'account-exists-with-different-credential') {
-        // Memberi tahu pengguna bahwa mereka harus login dengan metode lain
-        throw FirebaseAuthException(
-          code: 'existing-account-error',
-          message:
-              'Akun dengan email ini sudah ada. Silakan login menggunakan metode yang pernah Anda daftarkan (misal: Email & Password).',
-        );
-      }
-      debugPrint("Error saat menautkan dengan Google: ${e.code}");
-      rethrow;
-    }
-  }
-
-  // [PERBAIKAN] Modifikasi linkWithEmailAndPassword untuk menyimpan email
-  Future<User?> linkWithEmailAndPassword(String email, String password) async {
-    try {
-      if (currentUser == null){
-        throw Exception("Tidak ada pengguna untuk ditautkan.");
-        }
-
-      final credential = EmailAuthProvider.credential(
-        email: email,
-        password: password,
-      );
-      final userCredential = await currentUser!.linkWithCredential(credential);
-      final user = userCredential.user;
-
-      // ---- [BARU] Update data di Firestore setelah menautkan email ----
-      if (user != null) {
-        await FirestoreService().updateUserData({'email': user.email});
-      }
-      // -------------------------------------------------------------
-
-      return userCredential.user;
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'account-exists-with-different-credential') {
-        // Memberi tahu pengguna bahwa mereka harus login dengan metode lain
-        throw FirebaseAuthException(
-          code: 'existing-account-error',
-          message:
-              'Akun dengan email ini sudah ada. Silakan login menggunakan metode yang pernah Anda daftarkan (misal: Google).',
-        );
-      }
-      debugPrint("Error saat menautkan dengan email: ${e.code}");
-      rethrow;
-    }
-  }
+  // [DIHAPUS] Fungsi signInAnonymously() tidak diperlukan lagi.
+  // [DIHAPUS] Fungsi linkWithGoogle() tidak diperlukan lagi.
+  // [DIHAPUS] Fungsi linkWithEmailAndPassword() tidak diperlukan lagi.
 
   Future<User?> signInWithEmailAndPassword(
     String email,
@@ -135,7 +31,9 @@ class AuthService {
     }
   }
 
-  Future<void> signUpAndSignOut(String email, String password) async {
+  // [REVISI] Nama dan logika diubah agar tidak signOut setelah registrasi.
+  // Ini memberikan pengalaman pengguna yang lebih baik.
+  Future<User?> signUpWithEmailAndPassword(String email, String password) async {
     try {
       final UserCredential userCredential = await _auth
           .createUserWithEmailAndPassword(email: email, password: password);
@@ -146,8 +44,9 @@ class AuthService {
         if (!user.emailVerified) {
           await user.sendEmailVerification();
         }
-        await signOut();
+        // [DIHAPUS] await signOut(); - Pengguna tetap login setelah mendaftar.
       }
+      return user;
     } on FirebaseAuthException {
       rethrow;
     }
@@ -163,10 +62,12 @@ class AuthService {
 
   Future<User?> signInWithGoogle() async {
     try {
+      // Pastikan tidak ada sesi Google sebelumnya
       await _googleSignIn.signOut();
+      
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        return null;
+        return null; // Pengguna membatalkan login
       }
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
@@ -180,6 +81,7 @@ class AuthService {
       final user = userCredential.user;
 
       if (user != null) {
+        // Cek jika pengguna baru dan inisialisasi data
         await FirestoreService().initializeUserData(user);
       }
       return user;
@@ -229,7 +131,9 @@ class AuthService {
   Future<void> deleteUserAccount() async {
     try {
       if (currentUser != null) {
+        // Hapus data Firestore terlebih dahulu
         await FirestoreService().deleteUserData();
+        // Kemudian hapus akun Firebase Auth
         await currentUser!.delete();
       }
     } on FirebaseAuthException catch (e) {

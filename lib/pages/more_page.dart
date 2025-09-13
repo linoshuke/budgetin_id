@@ -29,7 +29,7 @@ class MorePage extends StatelessWidget {
                 const SnackBar(content: Text('Buka halaman kalender...')),
               );
             },
-          ),
+          ), 
           _buildMenuTile(
             context,
             icon: Icons.file_upload_outlined,

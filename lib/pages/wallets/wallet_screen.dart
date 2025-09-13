@@ -1,5 +1,8 @@
-// wallet_screen.dart (REVISED)
+// lib/pages/wallets/wallet_screen.dart
 
+import 'package:budgetin_id/pages/auth/service/auth_service.dart';
+import 'package:budgetin_id/pages/auth/service/lock.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'widgets/models/wallet_model.dart';
 import '/pages/account_router.dart';
@@ -10,7 +13,7 @@ import 'widgets/card_wallet.dart';
 class WalletsScreen extends StatelessWidget {
   const WalletsScreen({super.key});
 
-  // [REVISI] Dialog untuk menambah wallet baru sekarang lebih lengkap dan modern.
+  // Dialog _showAddWalletDialog tetap sama, tidak perlu diubah.
   void _showAddWalletDialog(BuildContext context) {
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
@@ -119,7 +122,6 @@ class WalletsScreen extends StatelessWidget {
     
     Navigator.of(context).pop();
 }
-
                       
                       Navigator.of(context).pop();
                     }
@@ -136,65 +138,83 @@ class WalletsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final firestoreService = context.watch<FirestoreService>();
+    // [BARU] Gunakan StreamBuilder untuk memeriksa status login
+    return StreamBuilder<User?>(
+      stream: context.read<AuthService>().authStateChanges,
+      builder: (context, authSnapshot) {
+        if (authSnapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Daftar Dompet Saya"), // Judul disesuaikan agar lebih personal
-        actions: const [AccountRouter()],
-      ),
-      body: StreamBuilder<List<Wallet>>(
-        stream: firestoreService.getWallets(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text("Terjadi kesalahan: ${snapshot.error}"));
-          }
-          // [REVISI] Memeriksa data dan membuat variabel lokal untuk menghilangkan `!`
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.wallet_giftcard, size: 80, color: Colors.grey.shade400),
-                  const SizedBox(height: 16),
-                  const Text(
-                    "Anda belum punya dompet.",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "Ayo buat satu untuk mulai mencatat!",
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            );
-          }
+        final bool isLoggedIn = authSnapshot.hasData && authSnapshot.data != null;
 
-          // [REVISI] Data aman untuk diakses di sini tanpa `!`
-          final wallets = snapshot.data!;
+        // Jika PENGGUNA SUDAH LOGIN
+        if (isLoggedIn) {
+          final firestoreService = context.watch<FirestoreService>();
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text("Daftar Dompet Saya"),
+              actions: const [AccountRouter()],
+            ),
+            body: StreamBuilder<List<Wallet>>(
+              stream: firestoreService.getWallets(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text("Terjadi kesalahan: ${snapshot.error}"));
+                }
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.wallet_giftcard, size: 80, color: Colors.grey),
+                        SizedBox(height: 16),
+                        Text( "Anda belum punya dompet.", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        SizedBox(height: 8),
+                        Text( "Ayo buat satu untuk mulai mencatat!", style: TextStyle(color: Colors.grey)),
+                      ],
+                    ),
+                  );
+                }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16.0),
-            itemCount: wallets.length,
-            itemBuilder: (context, index) {
-              final wallet = wallets[index];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: WalletCard(wallet: wallet),
-              );
-            },
+                final wallets = snapshot.data!;
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16.0),
+                  itemCount: wallets.length,
+                  itemBuilder: (context, index) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: WalletCard(wallet: wallets[index]),
+                    );
+                  },
+                );
+              },
+            ),
+            floatingActionButton: FloatingActionButton(
+              onPressed: () => _showAddWalletDialog(context),
+              tooltip: 'Tambah Wallet',
+              child: const Icon(Icons.add),
+            ),
           );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddWalletDialog(context),
-        tooltip: 'Tambah Wallet',
-        child: const Icon(Icons.add),
-      ),
+        } 
+        
+        // Jika PENGGUNA BELUM LOGIN
+        else {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text("Dompet"),
+              actions: const [AccountRouter()],
+            ),
+            body: const LockWidget(
+              featureName: "Dompet",
+              featureIcon: Icons.account_balance_wallet_rounded,
+            ),
+          );
+        }
+      },
     );
   }
 }

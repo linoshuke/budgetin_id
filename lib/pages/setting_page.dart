@@ -93,20 +93,7 @@ class SettingsPage extends StatelessWidget {
             'Tautkan akun Anda untuk menyimpan data secara permanen dan mengaksesnya dari perangkat lain.',
             style: TextStyle(color: Colors.grey),
           ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            icon: Image.asset('assets/icons/google.png', height: 22.0, color: Colors.white),
-            label: const Text('Lanjutkan dengan Google'),
-            onPressed: () => _handleLinkWithGoogle(context, provider),
-            style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            icon: const Icon(Icons.email_outlined),
-            label: const Text('Lanjutkan dengan Email'),
-            onPressed: () => _showLinkWithEmailDialog(context, provider), // [FIX] Memanggil fungsi di sini
-            style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
-          ),
+         
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -172,87 +159,8 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  // Wrapper untuk handle linking Google agar ada feedback
-  Future<void> _handleLinkWithGoogle(BuildContext context, SettingsProvider provider) async {
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      await provider.linkWithGoogle();
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Akun berhasil ditautkan dengan Google!'), backgroundColor: Colors.green),
-      );
-    } on FirebaseAuthException catch (e) {
-      String message = 'Gagal menautkan akun.';
-      if (e.code == 'credential-already-in-use') {
-        message = 'Akun Google ini sudah digunakan oleh pengguna lain.';
-      }
-      messenger.showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.red),
-      );
-    }
-  }
 
-  // [TETAP] Dialog untuk menautkan akun dengan email
-  void _showLinkWithEmailDialog(BuildContext context, SettingsProvider provider) {
-    // ... (kode dialog ini dari respons sebelumnya sudah benar, tidak perlu diubah)
-    final formKey = GlobalKey<FormState>();
-    final emailController = TextEditingController();
-    final passwordController = TextEditingController();
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Tautkan dengan Email'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: emailController,
-                autofocus: true,
-                decoration: const InputDecoration(labelText: 'Email Baru'),
-                validator: (val) => val!.isEmpty ? 'Email tidak boleh kosong' : null,
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: passwordController,
-                decoration: const InputDecoration(labelText: 'Password Baru'),
-                obscureText: true,
-                validator: (val) => val!.length < 6 ? 'Password minimal 6 karakter' : null,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
-          FilledButton(
-            onPressed: () async {
-              if (formKey.currentState!.validate()) {
-                final messenger = ScaffoldMessenger.of(context);
-                final navigator = Navigator.of(context);
-                try {
-                  await provider.linkWithEmail(emailController.text.trim(), passwordController.text.trim());
-                  navigator.pop();
-                  messenger.showSnackBar(
-                    const SnackBar(content: Text('Akun berhasil ditautkan!'), backgroundColor: Colors.green),
-                  );
-                } on FirebaseAuthException catch(e) {
-                  String message = 'Gagal menautkan akun.';
-                  if (e.code == 'email-already-in-use') {
-                    message = 'Email ini sudah digunakan oleh akun lain.';
-                  } else if (e.code == 'credential-already-in-use') {
-                    message = 'Akun ini sudah tertaut.';
-                  }
-                  messenger.showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.red));
-                }
-              }
-            },
-            child: const Text('Tautkan'),
-          ),
-        ],
-      ),
-    );
-  }
+  
   // [PERBAIKAN] Dialog konfirmasi hapus akun disederhanakan
   void _showDeleteAccountDialog(BuildContext context, SettingsProvider provider) {
     showDialog<void>(

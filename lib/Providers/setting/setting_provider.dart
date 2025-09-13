@@ -27,33 +27,8 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
   
-  // [BARU] Fungsi untuk menautkan dengan Email
-  Future<void> linkWithEmail(String email, String password) async {
-    _setLoading(true);
-    try {
-      await _authService.linkWithEmailAndPassword(email, password);
-      notifyListeners(); // Memberi tahu UI bahwa status user (isAnonymous) berubah
-    } catch (e) {
-      debugPrint('Error menautkan email di provider: $e');
-      rethrow;
-    } finally {
-      _setLoading(false);
-    }
-  }
+ 
 
-  // Fungsi linkWithGoogle yang sudah ada akan digunakan untuk menautkan juga
-  Future<void> linkWithGoogle() async {
-    _setLoading(true);
-    try {
-      await _authService.linkWithGoogle();
-      notifyListeners(); 
-    } catch (e) {
-      debugPrint('Error menautkan Google di provider: $e');
-      rethrow;
-    } finally {
-      _setLoading(false);
-    }
-  }
 
   Future<void> signOut() async {
     _setLoading(true);
