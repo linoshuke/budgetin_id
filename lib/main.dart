@@ -1,10 +1,9 @@
 // lib/main.dart (REVISED & FIXED)
 
-import 'package:budgetin_id/pages/auth/auth_wrapper.dart'; // [BARU] Import AuthWrapper
+import 'package:budgetin_id/pages/auth/auth_wrapper.dart'; 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
-// Hapus import HomePage jika tidak digunakan langsung di sini
 import 'pages/auth/service/auth_service.dart';
 import 'services/firestore_service.dart';
 import 'package:provider/provider.dart';

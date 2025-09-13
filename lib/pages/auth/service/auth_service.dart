@@ -1,4 +1,4 @@
-// lib/services/auth_service.dart 
+// lib/services/auth_service.dart
 
 import 'package:budgetin_id/services/firestore_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -28,32 +28,37 @@ class AuthService {
       rethrow;
     }
   }
-  
-  // [BARU] Fungsi untuk menautkan akun anonim dengan Email & Password
-    Future<User?> linkWithGoogle() async {
-    try {
-      if (currentUser == null) throw Exception("Tidak ada pengguna untuk ditautkan.");
-      
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return null; 
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+  // [BARU] Fungsi untuk menautkan akun anonim dengan Email & Password
+  Future<User?> linkWithGoogle() async {
+    try {
+      if (currentUser == null) {
+        throw Exception("Tidak ada pengguna untuk ditautkan.");
+      }
+
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return null;
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
-      
+
       final userCredential = await currentUser!.linkWithCredential(credential);
       final user = userCredential.user;
 
       // ---- [BARU] Bagian Kritis untuk Memperbaiki Nama ----
       if (user != null) {
         // Jika nama pengguna saat ini masih default/kosong, update dengan nama Google
-        if ((user.displayName == null || user.displayName!.isEmpty) && googleUser.displayName != null) {
+        if ((user.displayName == null || user.displayName!.isEmpty) &&
+            googleUser.displayName != null) {
           await user.updateDisplayName(googleUser.displayName);
         }
         // Jika foto profil saat ini kosong, update dengan foto Google
-        if ((user.photoURL == null || user.photoURL!.isEmpty) && googleUser.photoUrl != null) {
+        if ((user.photoURL == null || user.photoURL!.isEmpty) &&
+            googleUser.photoUrl != null) {
           await user.updatePhotoURL(googleUser.photoUrl);
         }
         // Juga update data di Firestore
@@ -64,14 +69,15 @@ class AuthService {
         });
       }
       // ---------------------------------------------------
-      
+
       return user;
     } on FirebaseAuthException catch (e) {
-       if (e.code == 'account-exists-with-different-credential') {
+      if (e.code == 'account-exists-with-different-credential') {
         // Memberi tahu pengguna bahwa mereka harus login dengan metode lain
         throw FirebaseAuthException(
           code: 'existing-account-error',
-          message: 'Akun dengan email ini sudah ada. Silakan login menggunakan metode yang pernah Anda daftarkan (misal: Email & Password).'
+          message:
+              'Akun dengan email ini sudah ada. Silakan login menggunakan metode yang pernah Anda daftarkan (misal: Email & Password).',
         );
       }
       debugPrint("Error saat menautkan dengan Google: ${e.code}");
@@ -82,27 +88,31 @@ class AuthService {
   // [PERBAIKAN] Modifikasi linkWithEmailAndPassword untuk menyimpan email
   Future<User?> linkWithEmailAndPassword(String email, String password) async {
     try {
-      if (currentUser == null) throw Exception("Tidak ada pengguna untuk ditautkan.");
+      if (currentUser == null){
+        throw Exception("Tidak ada pengguna untuk ditautkan.");
+        }
 
-      final credential = EmailAuthProvider.credential(email: email, password: password);
+      final credential = EmailAuthProvider.credential(
+        email: email,
+        password: password,
+      );
       final userCredential = await currentUser!.linkWithCredential(credential);
       final user = userCredential.user;
 
       // ---- [BARU] Update data di Firestore setelah menautkan email ----
       if (user != null) {
-        await FirestoreService().updateUserData({
-          'email': user.email,
-        });
+        await FirestoreService().updateUserData({'email': user.email});
       }
       // -------------------------------------------------------------
-      
+
       return userCredential.user;
     } on FirebaseAuthException catch (e) {
-       if (e.code == 'account-exists-with-different-credential') {
+      if (e.code == 'account-exists-with-different-credential') {
         // Memberi tahu pengguna bahwa mereka harus login dengan metode lain
         throw FirebaseAuthException(
           code: 'existing-account-error',
-          message: 'Akun dengan email ini sudah ada. Silakan login menggunakan metode yang pernah Anda daftarkan (misal: Google).'
+          message:
+              'Akun dengan email ini sudah ada. Silakan login menggunakan metode yang pernah Anda daftarkan (misal: Google).',
         );
       }
       debugPrint("Error saat menautkan dengan email: ${e.code}");
@@ -110,8 +120,10 @@ class AuthService {
     }
   }
 
-  
-  Future<User?> signInWithEmailAndPassword(String email, String password) async {
+  Future<User?> signInWithEmailAndPassword(
+    String email,
+    String password,
+  ) async {
     try {
       final userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
@@ -125,10 +137,8 @@ class AuthService {
 
   Future<void> signUpAndSignOut(String email, String password) async {
     try {
-      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      final UserCredential userCredential = await _auth
+          .createUserWithEmailAndPassword(email: email, password: password);
       final user = userCredential.user;
 
       if (user != null) {
@@ -158,12 +168,15 @@ class AuthService {
       if (googleUser == null) {
         return null;
       }
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+      final UserCredential userCredential = await _auth.signInWithCredential(
+        credential,
+      );
       final user = userCredential.user;
 
       if (user != null) {
@@ -175,7 +188,7 @@ class AuthService {
       rethrow;
     }
   }
-  
+
   Future<void> signOut() async {
     await _googleSignIn.signOut();
     await _auth.signOut();
@@ -221,8 +234,7 @@ class AuthService {
       }
     } on FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {
-        debugPrint(
-            'Operasi ini sensitif dan memerlukan autentikasi baru.');
+        debugPrint('Operasi ini sensitif dan memerlukan autentikasi baru.');
       }
       rethrow;
     }
