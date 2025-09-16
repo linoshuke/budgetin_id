@@ -2,7 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'service/auth_service.dart'; // Sesuaikan path jika perlu
+import 'package:budgetin_id/pages/auth/email_verification.dart'; 
+import 'package:budgetin_id/pages/auth/service/auth_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -12,20 +13,20 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
-  // ... (properti lain tetap sama)
   final AuthService _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
 
+  final _usernameController = TextEditingController(); // [BARU] Controller untuk username
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
   bool _isLoading = false;
   bool _isPasswordVisible = false;
-  String? _errorMessage;
 
   @override
   void dispose() {
+    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -42,81 +43,87 @@ class _SignUpScreenState extends State<SignUpScreen> {
   
   Future<void> _handleSignUp() async {
     FocusScope.of(context).unfocus();
+    if (!_formKey.currentState!.validate()) return;
 
-    if (_formKey.currentState!.validate()) {
-      _setLoading(true);
-      setState(() { _errorMessage = null; });
+    _setLoading(true);
+    try {
+      final User? user = await _authService.signUpWithEmailAndPassword(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+        _usernameController.text.trim(), // [BARU] Mengirim username
+      );
 
-      try {
-        // [REVISI] Memanggil fungsi baru yang tidak signOut
-        await _authService.signUpWithEmailAndPassword(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
+      if (mounted && user != null) {
+        // Arahkan ke halaman verifikasi. Pengguna tidak bisa kembali ke sini.
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => EmailVerificationScreen(),
+          ),
         );
-
-        if (mounted) {
-          // Karena pengguna sekarang otomatis login, kita kembali ke halaman utama.
-          Navigator.of(context).popUntil((route) => route.isFirst);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Registrasi berhasil! Link verifikasi telah dikirim.',
-              ),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } on FirebaseAuthException catch (e) {
-        String message;
-        switch (e.code) {
-          case 'weak-password':
-            message = 'Password yang dimasukkan terlalu lemah.';
-            break;
-          case 'email-already-in-use':
-            message = 'Email ini sudah terdaftar. Silakan login.';
-            break;
-          case 'invalid-email':
-            message = 'Format email tidak valid.';
-            break;
-          default:
-            message = 'Registrasi gagal. Silakan coba lagi.';
-        }
-        setState(() {
-          _errorMessage = message;
-        });
-      } finally {
-        _setLoading(false);
       }
+    } on FirebaseAuthException catch (e) {
+      String message;
+      switch (e.code) {
+        case 'weak-password':
+          message = 'Password yang dimasukkan terlalu lemah.';
+          break;
+        case 'email-already-in-use':
+          message = 'Email ini sudah terdaftar. Silakan login.';
+          break;
+        case 'invalid-email':
+          message = 'Format email tidak valid.';
+          break;
+        default:
+          message = 'Registrasi gagal: ${e.message}';
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } finally {
+      _setLoading(false);
     }
   }
   
-  // ... (Widget build() tetap sama persis, tidak perlu diubah)
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // [REVISI] AppBar untuk navigasi kembali yang jelas
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(
+              Icon(
                 Icons.person_add_alt_1_rounded,
-                size: 80,
-                color: Colors.indigo,
+                size: 64,
+                color: Theme.of(context).colorScheme.primary,
               ),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'Buat Akun Baru',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Daftar untuk mulai mengelola keuanganmu.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Colors.grey.shade600,
+                    ),
               ),
               const SizedBox(height: 32),
 
@@ -124,6 +131,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
+                    // [BARU] TextFormField untuk Username
+                    TextFormField(
+                      controller: _usernameController,
+                      keyboardType: TextInputType.name,
+                      decoration: const InputDecoration(
+                        labelText: 'Username',
+                        prefixIcon: Icon(Icons.person_outline),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().length < 3) {
+                          return 'Username minimal harus 3 karakter';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -176,7 +202,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _confirmPasswordController,
-                      obscureText: !_isPasswordVisible,
+                      obscureText: true, // Konfirmasi password sebaiknya selalu tersembunyi
                       decoration: const InputDecoration(
                         labelText: 'Konfirmasi Password',
                         prefixIcon: Icon(Icons.lock_person_outlined),
@@ -196,28 +222,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 24),
 
-              if (_errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10.0),
-                  child: Text(
-                    _errorMessage!,
-                    style: const TextStyle(color: Colors.red, fontSize: 14),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-
               if (_isLoading)
                 const Center(child: CircularProgressIndicator())
               else
-                ElevatedButton(
+                // [REVISI] Menggunakan FilledButton untuk konsistensi M3
+                FilledButton(
                   onPressed: _handleSignUp,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo,
-                    foregroundColor: Colors.white,
+                  style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
                   ),
                   child: const Text('Daftar', style: TextStyle(fontSize: 16)),
                 ),
@@ -230,9 +242,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   TextButton(
                     onPressed: _isLoading
                         ? null
-                        : () {
-                            Navigator.of(context).pop();
-                          },
+                        : () => Navigator.of(context).pop(),
                     child: const Text('Login di sini'),
                   ),
                 ],

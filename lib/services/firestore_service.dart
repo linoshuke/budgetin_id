@@ -20,7 +20,7 @@ class FirestoreService {
   }
 
   // --- Metode Inisialisasi User ---
-  Future<void> initializeUserData(User user) async {
+  Future<void> initializeUserData(User user, {String? displayName}) async {
     final userRef = _db.collection('users').doc(user.uid);
     final doc = await userRef.get();
 

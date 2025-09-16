@@ -12,10 +12,6 @@ class AuthService {
   Stream<User?> get authStateChanges => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
 
-  // [DIHAPUS] Fungsi signInAnonymously() tidak diperlukan lagi.
-  // [DIHAPUS] Fungsi linkWithGoogle() tidak diperlukan lagi.
-  // [DIHAPUS] Fungsi linkWithEmailAndPassword() tidak diperlukan lagi.
-
   Future<User?> signInWithEmailAndPassword(
     String email,
     String password,
@@ -31,20 +27,30 @@ class AuthService {
     }
   }
 
-  // [REVISI] Nama dan logika diubah agar tidak signOut setelah registrasi.
-  // Ini memberikan pengalaman pengguna yang lebih baik.
-  Future<User?> signUpWithEmailAndPassword(String email, String password) async {
+  // [REVISI] Menambahkan parameter displayName untuk registrasi username
+  Future<User?> signUpWithEmailAndPassword(String email, String password, String displayName) async {
     try {
       final UserCredential userCredential = await _auth
           .createUserWithEmailAndPassword(email: email, password: password);
       final user = userCredential.user;
 
       if (user != null) {
-        await FirestoreService().initializeUserData(user);
+        // [BARU] Simpan username ke profil Firebase Auth & Firestore
+        await user.updateDisplayName( displayName);
+        await FirestoreService().initializeUserData(user, displayName: displayName);
+
+        // Kirim email verifikasi
         if (!user.emailVerified) {
-          await user.sendEmailVerification();
+          var actionCodeSettings = ActionCodeSettings(
+            url: 'https://budgetin-id.web.app/verifikasi_email.html', // Pastikan nama file HTML benar
+            handleCodeInApp: true, 
+            iOSBundleId: 'com.example.budgetinId',
+            androidPackageName: 'com.lino.budgetin_id', 
+            androidMinimumVersion: '12',
+          );
+          
+          await user.sendEmailVerification(actionCodeSettings);
         }
-        // [DIHAPUS] await signOut(); - Pengguna tetap login setelah mendaftar.
       }
       return user;
     } on FirebaseAuthException {
@@ -62,12 +68,11 @@ class AuthService {
 
   Future<User?> signInWithGoogle() async {
     try {
-      // Pastikan tidak ada sesi Google sebelumnya
       await _googleSignIn.signOut();
       
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        return null; // Pengguna membatalkan login
+        return null;
       }
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
@@ -81,8 +86,8 @@ class AuthService {
       final user = userCredential.user;
 
       if (user != null) {
-        // Cek jika pengguna baru dan inisialisasi data
-        await FirestoreService().initializeUserData(user);
+        // [REVISI] Mengirim displayName dari akun Google ke Firestore
+        await FirestoreService().initializeUserData(user, displayName: user.displayName);
       }
       return user;
     } catch (e) {
@@ -96,6 +101,7 @@ class AuthService {
     await _auth.signOut();
   }
 
+  // ... (Sisa fungsi lain tetap sama, tidak perlu diubah) ...
   Future<void> reauthenticateWithPassword(String password) async {
     if (currentUser == null) throw Exception("User not logged in.");
     try {
@@ -131,9 +137,7 @@ class AuthService {
   Future<void> deleteUserAccount() async {
     try {
       if (currentUser != null) {
-        // Hapus data Firestore terlebih dahulu
         await FirestoreService().deleteUserData();
-        // Kemudian hapus akun Firebase Auth
         await currentUser!.delete();
       }
     } on FirebaseAuthException catch (e) {

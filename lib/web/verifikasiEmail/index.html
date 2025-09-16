@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verifikasi Email - Budgetin</title>
+    
+    <style>
+        /* CSS Anda sudah bagus, tidak perlu diubah, jadi saya akan biarkan apa adanya */
+        :root {
+            --primary-color: #4f46e5; /* Indigo */
+            --success-color: #16a34a; /* Green */
+            --error-color: #dc2626;   /* Red */
+            --text-dark: #1e293b;
+            --text-light: #64748b;
+            --bg-light: #f8fafc;
+            --white: #ffffff;
+            --border-color: #e2e8f0;
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            background-color: var(--bg-light);
+            color: var(--text-light);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .card {
+            background-color: var(--white);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            max-width: 400px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+            transform: translateY(-20px);
+            opacity: 0;
+            animation: fadeIn 0.5s forwards ease-out;
+        }
+        
+        .shake-error {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        .icon {
+            font-size: 50px;
+            line-height: 1;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: var(--text-dark);
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 12px 0;
+        }
+
+        p#status-message {
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 0 0 24px 0;
+            min-height: 40px;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: var(--primary-color);
+            animation: spin 1s ease infinite;
+            margin: 0 auto 24px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .action-button {
+            display: none;
+            width: 100%;
+            padding: 14px 20px;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .action-button:active {
+            transform: scale(0.98);
+        }
+
+        .btn-success {
+            background-color: var(--success-color);
+            color: var(--white);
+        }
+
+        .btn-error {
+            background-color: var(--error-color);
+            color: var(--white);
+        }
+        
+        .footer-text {
+            margin-top: 24px;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card" id="verification-card">
+        <div id="icon-placeholder" class="icon">⏳</div>
+        <h1 id="title">Verifikasi Email Anda</h1>
+        <p id="status-message">Kami sedang memproses verifikasi Anda. Mohon tunggu sebentar...</p>
+        <div id="spinner" class="spinner"></div>
+        <button id="action-button" class="action-button">Kembali ke Aplikasi</button>
+        <p class="footer-text">© 2025 Budgetin</p>
+    </div>
+
+    <!-- [REVISI TOTAL] Script diubah total ke Firebase JS SDK v9 (modular) -->
+    <script type="module">
+        // Impor fungsi yang dibutuhkan dari SDK v9
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+        import { getAuth, applyActionCode } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+
+        // GANTI DENGAN KONFIGURASI FIREBASE ANDA
+        const firebaseConfig = {
+             apiKey: "AIzaSyD1ZlVesx6Td4m_CcgC-GMWqmssaRaj5Ng",
+             authDomain: "budgetin-id.firebaseapp.com",
+             projectId: "budgetin-id",
+             storageBucket: "budgetin-id.firebasestorage.app",
+             messagingSenderId: "412881082749",
+             appId: "1:412881082749:web:6e521dce726889a0745414",
+             measurementId: "G-MCYVSKM03L"
+  };
+
+        // Inisialisasi Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app); // Dapatkan instance Auth dengan benar
+
+        // Elemen UI
+        const cardEl = document.getElementById('verification-card');
+        const iconEl = document.getElementById('icon-placeholder');
+        const titleEl = document.getElementById('title');
+        const statusMessageEl = document.getElementById('status-message');
+        const spinnerEl = document.getElementById('spinner');
+        const actionButtonEl = document.getElementById('action-button');
+
+        function getURLParameter(name) {
+            const url = new URL(window.location.href);
+            return url.searchParams.get(name);
+        }
+        
+        function openApp() {
+            // Skema ini harus Anda konfigurasikan di project Flutter Anda (Android & iOS)
+            const customScheme = 'budgetin://'; 
+            window.location.href = customScheme;
+        }
+
+        window.onload = function() {
+            const actionCode = getURLParameter('oobCode');
+
+            if (!actionCode) {
+                cardEl.classList.add('shake-error');
+                spinnerEl.style.display = 'none';
+                iconEl.innerText = '❌';
+                titleEl.innerText = 'Link Tidak Valid';
+                statusMessageEl.innerText = 'Sepertinya ada yang salah. Pastikan Anda menggunakan link yang benar dari email Anda.';
+                return;
+            }
+
+            // Lakukan verifikasi email menggunakan kode dari URL
+            applyActionCode(auth, actionCode)
+                .then(() => {
+                    // Berhasil!
+                    spinnerEl.style.display = 'none';
+                    iconEl.innerText = '✅';
+                    titleEl.innerText = 'Verifikasi Berhasil!';
+                    statusMessageEl.innerText = 'Email Anda telah berhasil diverifikasi. Anda sekarang dapat menutup halaman ini dan kembali ke aplikasi.';
+                    
+                    actionButtonEl.innerText = 'Kembali ke Aplikasi';
+                    actionButtonEl.className = 'action-button btn-success';
+                    actionButtonEl.style.display = 'block';
+                    actionButtonEl.onclick = openApp;
+                    
+                    setTimeout(openApp, 1500); // Beri sedikit jeda agar pengguna bisa membaca pesan
+                })
+                .catch((error) => {
+                    // Gagal!
+                    cardEl.classList.add('shake-error');
+                    spinnerEl.style.display = 'none';
+                    iconEl.innerText = '❌';
+                    titleEl.innerText = 'Verifikasi Gagal';
+                    
+                    let errorMessage = 'Terjadi kesalahan. Silakan coba lagi.';
+                    if (error.code === 'auth/invalid-action-code') {
+                        errorMessage = 'Link verifikasi tidak valid atau sudah kedaluwarsa. Silakan minta link baru dari aplikasi.';
+                    }
+                    statusMessageEl.innerText = errorMessage;
+
+                    actionButtonEl.innerText = 'Coba Lagi di Aplikasi';
+                    actionButtonEl.className = 'action-button btn-error';
+                    actionButtonEl.style.display = 'block';
+                    actionButtonEl.onclick = openApp;
+                });
+        };
+    </script>
+</body>
+</html>

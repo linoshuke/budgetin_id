@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.lino.budgetin_id",
+    "sha256_cert_fingerprints": [
+      "8c:17:7e:f1:e8:1b:74:7c:03:93:39:e5:0a:80:b1:9a:a4:b8:4e:3a:ce:50:2d:13:a2:ee:11:3b:cc:1a:11:e8"
+    ]
+  }
+}]
