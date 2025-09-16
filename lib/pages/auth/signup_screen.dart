@@ -1,9 +1,9 @@
-// lib/pages/auth/signup_screen.dart 
+// lib/pages/auth/signup_screen.dart (FIXED)
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:budgetin_id/pages/auth/email_verification.dart'; 
-import 'package:budgetin_id/pages/auth/service/auth_service.dart';
+import 'package:budgetin_id/pages/auth/email_verification.dart'; // Pastikan path ini benar
+import 'package:budgetin_id/pages/auth/service/auth_service.dart'; // Pastikan path ini benar
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -16,13 +16,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final AuthService _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
 
-  final _usernameController = TextEditingController(); // [BARU] Controller untuk username
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
   bool _isLoading = false;
   bool _isPasswordVisible = false;
+  // [BARU] State untuk visibilitas konfirmasi password
+  bool _isConfirmPasswordVisible = false;
 
   @override
   void dispose() {
@@ -33,6 +35,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
+  // ... (Fungsi _setLoading dan _handleSignUp tetap sama, tidak perlu diubah)
   void _setLoading(bool value) {
     if (mounted) {
       setState(() {
@@ -41,7 +44,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
   
-  Future<void> _handleSignUp() async {
+   Future<void> _handleSignUp() async {
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
 
@@ -50,14 +53,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
       final User? user = await _authService.signUpWithEmailAndPassword(
         _emailController.text.trim(),
         _passwordController.text.trim(),
-        _usernameController.text.trim(), // [BARU] Mengirim username
+        _usernameController.text.trim(),
       );
 
       if (mounted && user != null) {
-        // Arahkan ke halaman verifikasi. Pengguna tidak bisa kembali ke sini.
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (context) => EmailVerificationScreen(),
+            builder: (context) => const EmailVerificationScreen(),
           ),
         );
       }
@@ -92,7 +94,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // [REVISI] AppBar untuk navigasi kembali yang jelas
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -104,6 +105,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // ... (Bagian atas widget build tetap sama)
               Icon(
                 Icons.person_add_alt_1_rounded,
                 size: 64,
@@ -131,16 +133,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    // [BARU] TextFormField untuk Username
+                    // ... (TextFormField untuk username & email tetap sama)
                     TextFormField(
                       controller: _usernameController,
                       keyboardType: TextInputType.name,
                       decoration: const InputDecoration(
                         labelText: 'Username',
                         prefixIcon: Icon(Icons.person_outline),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(12)),
-                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.trim().length < 3) {
@@ -156,9 +155,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Email',
                         prefixIcon: Icon(Icons.email_outlined),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(12)),
-                        ),
                       ),
                       validator: (value) {
                         if (value == null ||
@@ -176,9 +172,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       decoration: InputDecoration(
                         labelText: 'Password',
                         prefixIcon: const Icon(Icons.lock_outline),
-                        border: const OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(12)),
-                        ),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _isPasswordVisible
@@ -202,12 +195,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _confirmPasswordController,
-                      obscureText: true, // Konfirmasi password sebaiknya selalu tersembunyi
-                      decoration: const InputDecoration(
+                      // [REVISI] Menggunakan state-nya sendiri
+                      obscureText: !_isConfirmPasswordVisible,
+                      decoration: InputDecoration( // [REVISI] Menambahkan decoration
                         labelText: 'Konfirmasi Password',
-                        prefixIcon: Icon(Icons.lock_person_outlined),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                        prefixIcon: const Icon(Icons.lock_person_outlined),
+                        // [BARU] Menambahkan suffixIcon untuk toggle visibilitas
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _isConfirmPasswordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                            });
+                          },
                         ),
                       ),
                       validator: (value) {
@@ -221,11 +225,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-
+              // ... (Sisa widget build tetap sama)
               if (_isLoading)
                 const Center(child: CircularProgressIndicator())
               else
-                // [REVISI] Menggunakan FilledButton untuk konsistensi M3
                 FilledButton(
                   onPressed: _handleSignUp,
                   style: FilledButton.styleFrom(
