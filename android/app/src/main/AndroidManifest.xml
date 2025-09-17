@@ -30,8 +30,14 @@
         <category android:name="android.intent.category.DEFAULT" />
         <category android:name="android.intent.category.BROWSABLE" />
         <data android:scheme="https" android:host="budgetin-id.web.app" /> 
-        <data android:scheme="budgetin" />
     </intent-filter>
+
+    <intent-filter>
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <category android:name="android.intent.category.BROWSABLE" />
+    <data android:scheme="budgetin" /> <!-- Nama scheme Anda -->
+</intent-filter>
 
         </activity>
         <!-- Don't delete the meta-data below.

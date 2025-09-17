@@ -1,5 +1,6 @@
 // lib/main.dart (FIXED)
 
+import 'package:budgetin_id/pages/auth/auth_handler.dart';
 import 'package:budgetin_id/pages/auth/email_verification.dart'; // Pastikan path ini benar
 import 'package:budgetin_id/pages/home_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -75,8 +76,10 @@ class MyApp extends StatelessWidget {
           ),
         ),
         debugShowCheckedModeBanner: false,
-        home: const AuthWrapper(),
-      ),
+          home: AuthHandler(
+          child: AuthWrapper(), // Asumsi Anda punya widget bernama AuthWrapper
+        ),
+      )
     );
   }
 }

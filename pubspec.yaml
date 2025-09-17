@@ -36,6 +36,12 @@ dependencies:
   # Ikon
   cupertino_icons: ^1.0.8
 
+  # WebView
+  webview_flutter: ^4.7.0
+
+  # Deep Link Listener
+  app_links: ^3.4.1 
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
