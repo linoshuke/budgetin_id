@@ -59,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // [BARU] Helper function untuk membuka WebView
+  
   void _openWebView(BuildContext context, String title, String url) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -68,7 +68,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
   
-  // ... sisa logika _setLoading, _handleEmailSignIn, _handleGoogleSignIn, _handlePasswordReset tidak berubah ...
   void _setLoading(bool value) { if (mounted) { setState(() { _isLoading = value; }); } }
   Future<void> _handleEmailSignIn() async { if (!_formKey.currentState!.validate()) return; _setLoading(true); try { await _authService.signInWithEmailAndPassword(_emailController.text.trim(),_passwordController.text.trim(),); } on FirebaseAuthException catch (e) { String message; switch (e.code) { case 'user-not-found': case 'invalid-credential': case 'wrong-password': message = 'Email atau password yang Anda masukkan salah.'; break; default: message = 'Login gagal. Pastikan data Anda benar.'; } if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Theme.of(context).colorScheme.error,)); } } finally { _setLoading(false); } }
   Future<void> _handleGoogleSignIn() async { _setLoading(true); try { await _authService.signInWithGoogle(); } catch (e) { if (mounted) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Login dengan Google dibatalkan atau gagal.'))); } } finally { _setLoading(false); } }

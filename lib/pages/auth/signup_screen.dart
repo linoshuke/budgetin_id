@@ -2,8 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:budgetin_id/pages/auth/email_verification.dart'; // Pastikan path ini benar
-import 'package:budgetin_id/pages/auth/service/auth_service.dart'; // Pastikan path ini benar
+import 'package:budgetin_id/pages/auth/email_verification.dart'; 
+import 'package:budgetin_id/pages/auth/service/auth_service.dart';
+import 'package:budgetin_id/pages/usageservice.dart'; 
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
