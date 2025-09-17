@@ -27,7 +27,6 @@ class AuthService {
     }
   }
 
-  // [REVISI] Menambahkan parameter displayName untuk registrasi username
   Future<User?> signUpWithEmailAndPassword(String email, String password, String displayName) async {
     try {
       final UserCredential userCredential = await _auth
@@ -35,21 +34,14 @@ class AuthService {
       final user = userCredential.user;
 
       if (user != null) {
-        // [BARU] Simpan username ke profil Firebase Auth & Firestore
-        await user.updateDisplayName( displayName);
+        await user.updateDisplayName(displayName);
         await FirestoreService().initializeUserData(user, displayName: displayName);
 
-        // Kirim email verifikasi
+        // [PERBAIKAN] Hapus ActionCodeSettings.
+        // Firebase akan otomatis mengirim link yang bisa ditangani oleh aplikasi
+        // melalui deep link yang sudah dikonfigurasi.
         if (!user.emailVerified) {
-          var actionCodeSettings = ActionCodeSettings(
-            url: 'https://budgetin-id.web.app/verifikasi_email.html', // Pastikan nama file HTML benar
-            handleCodeInApp: true, 
-            iOSBundleId: 'com.example.budgetinId',
-            androidPackageName: 'com.lino.budgetin_id', 
-            androidMinimumVersion: '12',
-          );
-          
-          await user.sendEmailVerification(actionCodeSettings);
+          await user.sendEmailVerification();
         }
       }
       return user;
@@ -60,6 +52,8 @@ class AuthService {
 
   Future<void> sendPasswordResetEmail(String email) async {
     try {
+      // [PERBAIKAN] Cukup panggil fungsi ini. Link reset password dari Firebase
+      // akan berfungsi dengan benar dan tidak akan mengarah ke halaman verifikasi kustom Anda.
       await _auth.sendPasswordResetEmail(email: email);
     } on FirebaseAuthException {
       rethrow;
@@ -86,7 +80,6 @@ class AuthService {
       final user = userCredential.user;
 
       if (user != null) {
-        // [REVISI] Mengirim displayName dari akun Google ke Firestore
         await FirestoreService().initializeUserData(user, displayName: user.displayName);
       }
       return user;
@@ -96,12 +89,12 @@ class AuthService {
     }
   }
 
+  // ... sisa kode Anda (signOut, reauthenticate, deleteUserAccount) tidak perlu diubah.
   Future<void> signOut() async {
     await _googleSignIn.signOut();
     await _auth.signOut();
   }
-
-  // ... (Sisa fungsi lain tetap sama, tidak perlu diubah) ...
+  
   Future<void> reauthenticateWithPassword(String password) async {
     if (currentUser == null) throw Exception("User not logged in.");
     try {

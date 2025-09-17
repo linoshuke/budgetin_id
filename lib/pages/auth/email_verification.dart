@@ -1,6 +1,7 @@
-// lib/pages/auth/email_verification_screen.dart (FIXED TIMER LOGIC)
+// lib/pages/auth/email_verification_screen.dart (FIXED NAVIGATION LOGIC)
 
 import 'dart:async';
+import 'package:budgetin_id/pages/home_page.dart'; // <-- [BARU] Impor HomePage
 import 'package:budgetin_id/pages/auth/service/auth_service.dart'; // Pastikan path benar
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -15,9 +16,7 @@ class EmailVerificationScreen extends StatefulWidget {
 }
 
 class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
-  final int _resendCooldown = 30; // Durasi cooldown dalam detik
-  
-  // [REVISI] Variabel untuk mengelola state cooldown
+  final int _resendCooldown = 30;
   Timer? _checkVerificationTimer;
   Timer? _uiUpdateTimer;
   DateTime? _resendAvailableTime;
@@ -27,14 +26,18 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     super.initState();
     _startCooldown();
 
-    // Timer ini hanya untuk memeriksa status verifikasi email
-    _checkVerificationTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      FirebaseAuth.instance.currentUser?.reload();
+    // Timer untuk memeriksa status verifikasi email secara berkala
+    _checkVerificationTimer =
+        Timer.periodic(const Duration(seconds: 3), (timer) async {
+      // Selalu reload user object untuk mendapatkan status terbaru dari server
+      await FirebaseAuth.instance.currentUser?.reload();
       final user = FirebaseAuth.instance.currentUser;
-      
+
+      // [PERBAIKAN KRUSIAL] Logika navigasi setelah verifikasi berhasil
       if (user?.emailVerified ?? false) {
-        timer.cancel();
-        _uiUpdateTimer?.cancel();
+        timer.cancel(); // Hentikan timer pemeriksa
+        _uiUpdateTimer?.cancel(); // Hentikan juga timer UI
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -42,31 +45,34 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
               backgroundColor: Colors.green,
             ),
           );
+
+          // Navigasi ke HomePage dan hapus semua halaman sebelumnya (login, signup, verify)
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const HomePage()),
+            (Route<dynamic> route) => false, // Predikat ini menghapus semua route
+          );
         }
-        // AuthWrapper di main.dart akan menangani navigasi secara otomatis
       }
     });
   }
-
-  // [REVISI] Logika untuk memulai cooldown dan memperbarui UI
+  
+  // Sisa kode di bawah ini (dispose, _startCooldown, _resendVerificationEmail, build)
+  // sudah benar dan tidak perlu diubah.
+  
   void _startCooldown() {
-    _uiUpdateTimer?.cancel(); // Batalkan timer UI sebelumnya jika ada
+    _uiUpdateTimer?.cancel(); 
     
     setState(() {
-      // Set waktu kapan tombol bisa ditekan lagi
       _resendAvailableTime = DateTime.now().add(Duration(seconds: _resendCooldown));
     });
 
-    // Timer ini hanya untuk memperbarui tampilan setiap detik
     _uiUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      // Panggil setState untuk me-render ulang widget dengan sisa waktu yang baru
       if (mounted) {
         setState(() {});
       } else {
         timer.cancel();
       }
       
-      // Jika waktu cooldown sudah habis, hentikan timer ini
       final remaining = _resendAvailableTime?.difference(DateTime.now()).inSeconds ?? 0;
       if (remaining <= 0) {
         timer.cancel();
@@ -83,7 +89,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
   Future<void> _resendVerificationEmail() async {
     final remainingSeconds = _resendAvailableTime?.difference(DateTime.now()).inSeconds ?? 0;
-    if (remainingSeconds > 0) return; // Keluar jika masih dalam cooldown
+    if (remainingSeconds > 0) return;
 
     try {
       await FirebaseAuth.instance.currentUser?.sendEmailVerification();
@@ -94,7 +100,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
             backgroundColor: Colors.blue,
           ),
         );
-        _startCooldown(); // Mulai cooldown lagi dari awal
+        _startCooldown(); 
       }
     } catch (e) {
       if (mounted) {
@@ -111,8 +117,6 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   @override
   Widget build(BuildContext context) {
     final userEmail = FirebaseAuth.instance.currentUser?.email ?? 'email Anda';
-
-    // [REVISI] Hitung sisa waktu pada setiap build
     final remainingSeconds = _resendAvailableTime?.difference(DateTime.now()).inSeconds ?? 0;
     final bool canResend = remainingSeconds <= 0;
 
@@ -162,7 +166,6 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
               const SizedBox(height: 32),
               FilledButton.icon(
                 icon: const Icon(Icons.send_rounded),
-                // [REVISI] Teks dan state tombol berdasarkan sisa waktu
                 label: Text(canResend
                     ? 'Kirim Ulang Email' 
                     : 'Kirim Ulang dalam $remainingSeconds detik'),
