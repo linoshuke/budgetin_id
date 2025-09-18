@@ -42,6 +42,9 @@ dependencies:
   # Deep Link Listener
   app_links: ^3.4.1 
 
+  # Package validasi
+  firebase_app_check: ^0.2.2+7
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

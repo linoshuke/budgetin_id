@@ -1,5 +1,3 @@
-// lib/main.dart (FIXED)
-
 import 'package:budgetin_id/pages/auth/auth_handler.dart';
 import 'package:budgetin_id/pages/auth/email_verification.dart'; // Pastikan path ini benar
 import 'package:budgetin_id/pages/home_page.dart';
@@ -7,16 +5,30 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:budgetin_id/pages/auth/service/auth_service.dart'; // Sesuaikan path jika perlu
+import 'package:budgetin_id/pages/auth/service/auth_service.dart';
 import 'package:budgetin_id/services/firestore_service.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
+
+// [TAMBAHKAN] Impor yang diperlukan untuk App Check
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:flutter/foundation.dart'; // Untuk kDebugMode
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // [TAMBAHKAN] Inisialisasi Firebase App Check di sini
+  // Ini akan mencegah Firebase memblokir perangkat Anda selama development
+  await FirebaseAppCheck.instance.activate(
+    // Gunakan provider debug saat dalam mode debug
+    androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+    // Jika Anda juga menargetkan iOS:
+    // appleProvider: kDebugMode ? AppleProvider.debug : AppleProvider.appAttest,
+  );
+
   await initializeDateFormatting('id_ID', null);
   runApp(const MyApp());
 }
@@ -47,7 +59,6 @@ class MyApp extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          // [FIX 1] Menggunakan constructor CardThemeData yang benar
           cardTheme: CardThemeData(
             elevation: 0.5,
             color: Colors.white,
@@ -77,13 +88,14 @@ class MyApp extends StatelessWidget {
         ),
         debugShowCheckedModeBanner: false,
           home: AuthHandler(
-          child: AuthWrapper(), // Asumsi Anda punya widget bernama AuthWrapper
+          child: AuthWrapper(),
         ),
       )
     );
   }
 }
 
+// AuthWrapper Anda sudah benar, tidak perlu diubah.
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
@@ -103,19 +115,20 @@ class AuthWrapper extends StatelessWidget {
         final user = snapshot.data;
 
         if (user != null) {
-          // Jika user login, cek apakah email sudah terverifikasi
           if (user.emailVerified) {
-            // Jika sudah, tampilkan HomePage
             return const HomePage();
           } else {
-            // [FIX 2] Menggunakan nama class EmailVerificationScreen yang benar
+            // Pastikan Anda memiliki class EmailVerificationScreen
             return const EmailVerificationScreen();
           }
         }
         
-        // Jika tidak ada user yang login, tampilkan HomePage (yang akan menampilkan LockWidget)
-        return const HomePage();
-      },
+        // Jika tidak ada user, arahkan ke halaman login
+        // (Saya asumsikan Anda punya LoginScreen, ganti jika perlu)
+        // Note: Anda sebelumnya menggunakan HomePage, yang mungkin tidak ideal
+        // jika user belum login sama sekali.
+        return const HomePage(); 
+      }
     );
   }
 }

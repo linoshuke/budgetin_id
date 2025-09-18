@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:budgetin_id/pages/auth/service/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:budgetin_id/pages/auth/signup_screen.dart';
-import 'package:budgetin_id/pages/webviewscreen.dart'; // [BARU] Impor WebViewScreen
+import 'package:budgetin_id/pages/webviewscreen.dart';
+import 'package:budgetin_id/pages/usageservice.dart';
+import 'package:budgetin_id/pages/home_page.dart';  
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -69,9 +71,150 @@ class _LoginScreenState extends State<LoginScreen> {
   }
   
   void _setLoading(bool value) { if (mounted) { setState(() { _isLoading = value; }); } }
-  Future<void> _handleEmailSignIn() async { if (!_formKey.currentState!.validate()) return; _setLoading(true); try { await _authService.signInWithEmailAndPassword(_emailController.text.trim(),_passwordController.text.trim(),); } on FirebaseAuthException catch (e) { String message; switch (e.code) { case 'user-not-found': case 'invalid-credential': case 'wrong-password': message = 'Email atau password yang Anda masukkan salah.'; break; default: message = 'Login gagal. Pastikan data Anda benar.'; } if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Theme.of(context).colorScheme.error,)); } } finally { _setLoading(false); } }
-  Future<void> _handleGoogleSignIn() async { _setLoading(true); try { await _authService.signInWithGoogle(); } catch (e) { if (mounted) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Login dengan Google dibatalkan atau gagal.'))); } } finally { _setLoading(false); } }
-  void _handlePasswordReset() { final emailResetController = TextEditingController(); showDialog(context: context, builder: (dialogContext) => AlertDialog(title: const Text("Reset Password"), content: Column(mainAxisSize: MainAxisSize.min, children: [ const Text( "Masukkan email Anda. Link untuk reset password akan dikirim."), const SizedBox(height: 16), TextFormField( controller: emailResetController, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration( labelText: "Email", prefixIcon: Icon(Icons.email_outlined), border: OutlineInputBorder(), ), autofocus: true, ), ]), actions: [ TextButton( onPressed: () => Navigator.of(dialogContext).pop(), child: const Text("Batal")), FilledButton( onPressed: () async { if (emailResetController.text.trim().isEmpty) return; final scaffoldMessenger = ScaffoldMessenger.of(context); Navigator.of(dialogContext).pop(); _setLoading(true); try { await _authService.sendPasswordResetEmail(emailResetController.text.trim()); scaffoldMessenger.showSnackBar( const SnackBar( content: Text( "Link reset telah dikirim. Periksa folder inbox & spam."), backgroundColor: Colors.green, ), ); } catch (e) { scaffoldMessenger.showSnackBar( const SnackBar( content: Text("Gagal mengirim. Pastikan email terdaftar."), backgroundColor: Colors.red, ), ); } finally { if (mounted) { _setLoading(false); } } }, child: const Text("Kirim"), ), ], ), ); }
+  Future<void> _handleEmailSignIn() async {
+    if (!_formKey.currentState!.validate() || !mounted) return;
+    _setLoading(true);
+
+    try {
+      await _authService.signInWithEmailAndPassword(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      // Setelah login berhasil, AuthWrapper akan membangun HomePage.
+      // Kita hapus semua halaman sebelumnya (seperti LoginScreen) dan tampilkan HomePage.
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const HomePage()),
+          (route) => false, // Predikat `false` akan menghapus semua rute sebelumnya
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      String message;
+      switch (e.code) {
+        case 'user-not-found':
+        case 'invalid-credential':
+        case 'wrong-password':
+          message = 'Email atau password yang Anda masukkan salah.';
+          break;
+        default:
+          message = 'Login gagal. Pastikan data Anda benar.';
+      }
+      if (mounted) _showErrorSnackBar(message);
+    } on UsageLimitExceededException catch (e) {
+      if (mounted) _showErrorSnackBar(e.message, isWarning: true);
+    } catch (e) {
+      if (mounted) _showErrorSnackBar('Terjadi kesalahan yang tidak diketahui.');
+    } finally {
+      _setLoading(false);
+    }
+  }
+  Future<void> _handleGoogleSignIn() async {
+     _setLoading(true); try { await _authService.signInWithGoogle();
+      } catch (e) { if (mounted) { ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login dengan Google dibatalkan atau gagal.')));
+         }
+        } 
+        finally { _setLoading(false);
+         }
+        }
+  void _handlePasswordReset() {
+  final emailResetController = TextEditingController();
+  showDialog(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text("Reset Password"),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+              "Masukkan email Anda. Link untuk reset password akan dikirim."),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: emailResetController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: "Email",
+              prefixIcon: Icon(Icons.email_outlined),
+              border: OutlineInputBorder(),
+            ),
+            autofocus: true,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text("Batal")),
+        FilledButton(
+          onPressed: () async {
+            if (emailResetController.text.trim().isEmpty) return;
+            
+            // [FIX] Simpan referensi ke context-dependent objects SEBELUM async gap
+            final scaffoldMessenger = ScaffoldMessenger.of(context);
+            final theme = Theme.of(context);
+
+            Navigator.of(dialogContext).pop();
+            _setLoading(true);
+
+            try {
+              await _authService
+                  .sendPasswordResetEmail(emailResetController.text.trim());
+              
+              // [FIX] Guard: Periksa 'mounted' SEBELUM menggunakan context
+              if (!mounted) return; 
+              scaffoldMessenger.showSnackBar(
+                const SnackBar(
+                  content: Text(
+                      "Jika email Anda terdaftar, link reset akan dikirim. Silakan periksa inbox & spam."),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            } on UsageLimitExceededException catch (e) {
+              // [FIX] Guard: Periksa 'mounted' SEBELUM menggunakan context
+              if (!mounted) return;
+              scaffoldMessenger.showSnackBar(
+                SnackBar(
+                  content: Text(e.message),
+                  backgroundColor: Colors.orange.shade700,
+                ),
+              );
+            } on FirebaseAuthException catch(e) {
+                // [FIX] Guard: Periksa 'mounted' SEBELUM menggunakan context
+                if (!mounted) return;
+                String message = "Gagal mengirim permintaan. Coba lagi nanti.";
+                if (e.code == 'invalid-email') {
+                  message = "Format email yang Anda masukkan tidak valid.";
+                }
+                 scaffoldMessenger.showSnackBar(
+                  SnackBar(
+                    content: Text(message),
+                    backgroundColor: theme.colorScheme.error, // Gunakan theme yang sudah disimpan
+                  ),
+                );
+            }
+            finally {
+              // [FIX] Guard: Periksa 'mounted' SEBELUM mengubah state
+              if (mounted) {
+                _setLoading(false);
+              }
+            }
+          },
+          child: const Text("Kirim"),
+        ),
+      ],
+    ),
+  );
+}
+
+
+  // Helper untuk menampilkan SnackBar, bisa ditambahkan parameter 'isWarning'
+  void _showErrorSnackBar(String message, {bool isWarning = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: isWarning ? Colors.orange.shade700 : Theme.of(context).colorScheme.error,
+    ));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +222,6 @@ class _LoginScreenState extends State<LoginScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      // [PERBAIKAN] Tambahkan AppBar dengan tombol kembali
       appBar: AppBar(
         title: const Text('Login Akun'),
         leading: IconButton(
@@ -107,10 +249,44 @@ class _LoginScreenState extends State<LoginScreen> {
               Text('Login untuk melanjutkan mengelola keuanganmu.',
                   textAlign: TextAlign.center, style: textTheme.bodyLarge),
               const SizedBox(height: 40),
-              // ... Form dan tombol login tetap sama
-              Form( key: _formKey, child: Column( children: [ TextFormField( controller: _emailController, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration( labelText: 'Email', prefixIcon: Icon(Icons.email_outlined), border: OutlineInputBorder()), validator: (value) => (value == null || value.isEmpty) ? 'Email tidak boleh kosong' : null), const SizedBox(height: 16), TextFormField( controller: _passwordController, obscureText: !_isPasswordVisible, decoration: InputDecoration( labelText: 'Password', prefixIcon: const Icon(Icons.lock_outline), border: const OutlineInputBorder(), suffixIcon: IconButton( icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off), onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible))), validator: (value) => (value == null || value.isEmpty) ? 'Password tidak boleh kosong' : null), ], ), ),
-              Align( alignment: Alignment.centerRight, child: TextButton( onPressed: _isLoading ? null : _handlePasswordReset, child: const Text('Lupa Password?'))), const SizedBox(height: 16), if (_isLoading) const Center(child: CircularProgressIndicator()) else Column( crossAxisAlignment: CrossAxisAlignment.stretch, children: [ FilledButton( onPressed: _handleEmailSignIn, style: FilledButton.styleFrom( padding: const EdgeInsets.symmetric(vertical: 16), ), child: const Text('Masuk', style: TextStyle(fontSize: 16)), ), const SizedBox(height: 16), Row(children: [ const Expanded(child: Divider()), Padding( padding: const EdgeInsets.symmetric(horizontal: 8.0), child: Text('ATAU', style: textTheme.bodySmall ?.copyWith(color: Colors.grey.shade600))), const Expanded(child: Divider()) ]), const SizedBox(height: 16), OutlinedButton.icon( icon: Image.asset('assets/icons/google.png', height: 22.0), label: const Text('Login dengan Google'), onPressed: _handleGoogleSignIn, style: OutlinedButton.styleFrom( padding: const EdgeInsets.symmetric(vertical: 12), ), ), ], ),
-              
+              Form( key: _formKey, child: Column( children: [ 
+                TextFormField( controller: _emailController, 
+                keyboardType: TextInputType.emailAddress, 
+                decoration: const InputDecoration( labelText: 'Email', 
+                prefixIcon: Icon(Icons.email_outlined), 
+                border: OutlineInputBorder()), 
+                validator: (value) => (value == null || value.isEmpty) ? 'Email tidak boleh kosong' : null), 
+                const SizedBox(height: 16), TextFormField( 
+                  controller: _passwordController, 
+                  obscureText: !_isPasswordVisible, 
+                  decoration: InputDecoration( 
+                    labelText: 'Password', prefixIcon: const Icon(Icons.lock_outline), 
+                    border: const OutlineInputBorder(), 
+                    suffixIcon: IconButton( icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off), onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible))), 
+                    validator: (value) => (value == null || value.isEmpty) ? 'Password tidak boleh kosong' : null), 
+                    ],
+                     ), 
+                    ),
+              Align( alignment: Alignment.centerRight, 
+              child: TextButton( onPressed: _isLoading ? null : _handlePasswordReset, 
+              child: const Text('Lupa Password?'))), const SizedBox(height: 16), if (_isLoading) const Center(child: CircularProgressIndicator()) else Column( 
+                crossAxisAlignment: CrossAxisAlignment.stretch, 
+              children: [ FilledButton( onPressed: _handleEmailSignIn, 
+              style: FilledButton.styleFrom( 
+                padding: const EdgeInsets.symmetric(vertical: 16), ), 
+                child: const Text('Masuk', style: TextStyle(fontSize: 16)), ), 
+                const SizedBox(height: 16), Row(children: [ 
+                  const Expanded(child: Divider()), 
+                  Padding( padding: const EdgeInsets.symmetric(horizontal: 8.0), 
+                  child: Text('ATAU', style: textTheme.bodySmall ?.copyWith(color: Colors.grey.shade600))), 
+                  const Expanded(child: Divider()) ]), const SizedBox(height: 16), 
+                  OutlinedButton.icon( icon: Image.asset('assets/icons/google.png', height: 22.0), 
+                  label: const Text('Login dengan Google'), onPressed: _handleGoogleSignIn, 
+                  style: OutlinedButton.styleFrom( padding: const EdgeInsets.symmetric(vertical: 12),
+                   ), 
+                  ), 
+                 ], 
+               ),
               const SizedBox(height: 24),
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 const Text("Belum punya akun?"),
@@ -123,7 +299,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ]),
               
               const SizedBox(height: 24),
-              // [PERBAIKAN] Mengganti tombol 'Kembali' dengan disclaimer
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: RichText(

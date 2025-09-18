@@ -50,48 +50,90 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     _setLoading(true);
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final username = _usernameController.text.trim();
+
     try {
       final User? user = await _authService.signUpWithEmailAndPassword(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-        _usernameController.text.trim(),
+        email,
+        password,
+        username,
       );
 
       if (mounted && user != null) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const EmailVerificationScreen(),
-          ),
-        );
+        // Pendaftaran berhasil sepenuhnya, lanjutkan seperti biasa
+        _navigateToVerification();
       }
     } on FirebaseAuthException catch (e) {
-      String message;
-      switch (e.code) {
-        case 'weak-password':
-          message = 'Password yang dimasukkan terlalu lemah.';
-          break;
-        case 'email-already-in-use':
-          message = 'Email ini sudah terdaftar. Silakan login.';
-          break;
-        case 'invalid-email':
-          message = 'Format email tidak valid.';
-          break;
-        default:
-          message = 'Registrasi gagal: ${e.message}';
+      // Jika errornya adalah karena terlalu banyak request (blokir keamanan)
+      if (e.code == 'too-many-requests' && mounted) {
+        // Kita curiga user sudah dibuat tapi respons diblokir.
+        // Mari kita coba login untuk memverifikasi.
+        await _trySignInAfterSignUpFailure(email, password);
+      } else {
+        // Untuk error lain (email sudah ada, password lemah, dll), tampilkan pesan seperti biasa
+        String message;
+        switch (e.code) {
+          case 'weak-password':
+            message = 'Password yang dimasukkan terlalu lemah.';
+            break;
+          case 'email-already-in-use':
+            message = 'Email ini sudah terdaftar. Silakan login.';
+            break;
+          case 'invalid-email':
+            message = 'Format email tidak valid.';
+            break;
+          default:
+            message = 'Registrasi gagal: ${e.message}';
+        }
+        _showErrorSnackBar(message);
       }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
+    } on UsageLimitExceededException catch (e) {
+      _showErrorSnackBar(e.message, isWarning: true);
     } finally {
       _setLoading(false);
     }
   }
-  
+
+ Future<void> _trySignInAfterSignUpFailure(String email, String password) async {
+    try {
+      // Coba login dengan kredensial yang sama
+      final user = await _authService.signInWithEmailAndPassword(email, password);
+      if (user != null && mounted) {
+        // Jika login berhasil, berarti user memang sudah dibuat.
+        // Lanjutkan alur ke verifikasi email. Masalah teratasi!
+        _navigateToVerification();
+      }
+    } catch (_) {
+      // Jika login juga gagal, berarti memang ada masalah.
+      // Tampilkan pesan error yang lebih relevan kepada user.
+      _showErrorSnackBar(
+        "Registrasi diblokir karena aktivitas tidak wajar. Silakan coba lagi nanti."
+      );
+    }
+  }
+
+  void _navigateToVerification() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => const EmailVerificationScreen(),
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message, {bool isWarning = false}) {
+     if (!mounted) return;
+     ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: isWarning 
+            ? Colors.orange.shade700 
+            : Theme.of(context).colorScheme.error,
+        ),
+      );
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -106,7 +148,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ... (Bagian atas widget build tetap sama)
               Icon(
                 Icons.person_add_alt_1_rounded,
                 size: 64,
@@ -134,7 +175,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    // ... (TextFormField untuk username & email tetap sama)
                     TextFormField(
                       controller: _usernameController,
                       keyboardType: TextInputType.name,
