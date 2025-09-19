@@ -34,40 +34,51 @@ class FirestoreService {
     }
   }
 
-  // [BARU] Fungsi untuk menghapus semua data pengguna dan sub-koleksinya
-  // Penting: Untuk aplikasi skala besar, disarankan menggunakan Cloud Function untuk ini.
+  // [PERBAIKAN UTAMA] Logika ini sekarang menghapus semua data pengguna di Firestore,
+  // termasuk semua dompet dan transaksi yang tersimpan di dalam sub-koleksi.
   Future<void> deleteUserData() async {
-    if (_userId == null) return;
-    final userRef = _db.collection('users').doc(_userId);
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception("User tidak login, tidak ada data yang bisa dihapus.");
+    }
 
-    // Hapus sub-koleksi 'wallets'
-    await _deleteSubcollection(userRef.collection('wallets'));
-    // Hapus sub-koleksi 'transactions'
-    await _deleteSubcollection(userRef.collection('transactions'));
+    final userDocRef = _db.collection('users').doc(user.uid);
 
-    // Setelah sub-koleksi kosong, hapus dokumen utama user
-    await userRef.delete();
+    // 1. Hapus sub-koleksi 'transactions'
+    final transactionsRef = userDocRef.collection('transactions');
+    await _deleteCollection(transactionsRef);
+
+    // 2. Hapus sub-koleksi 'wallets'
+    final walletsRef = userDocRef.collection('wallets');
+    await _deleteCollection(walletsRef);
+
+    // 3. Terakhir, hapus dokumen utama pengguna itu sendiri
+    await userDocRef.delete();
   }
 
-  // Helper untuk menghapus semua dokumen dalam sebuah koleksi
-  Future<void> _deleteSubcollection(CollectionReference collection) async {
-    final snapshot = await collection.limit(500).get(); // Batasi per batch
-    if (snapshot.docs.isEmpty) return;
+  // [BARU] Helper untuk menghapus semua dokumen dalam sebuah koleksi secara batch.
+  // Firestore tidak dapat menghapus koleksi secara langsung dari sisi klien,
+  // jadi kita harus menghapus setiap dokumen di dalamnya satu per satu.
+  Future<void> _deleteCollection(CollectionReference collectionRef) async {
+    // Ambil semua dokumen dalam koleksi
+    final querySnapshot = await collectionRef.get();
 
+    // Jika koleksi sudah kosong, tidak ada yang perlu dilakukan
+    if (querySnapshot.docs.isEmpty) {
+      return;
+    }
+
+    // Buat batch write untuk efisiensi
     final batch = _db.batch();
-    for (final doc in snapshot.docs) {
+    for (final doc in querySnapshot.docs) {
       batch.delete(doc.reference);
     }
-    await batch.commit();
 
-    // Jika masih ada dokumen, panggil rekursif
-    if (snapshot.docs.length == 500) {
-      await _deleteSubcollection(collection);
-    }
+    // Lakukan semua operasi hapus dalam satu panggilan ke server
+    await batch.commit();
   }
 
-  // --- Sisa Kode Anda (tidak perlu diubah) ---
-  // ...
+  
   Future<void> createDefaultWallets() async {
     if (_userId == null) return;
     final walletsRef = _db.collection('users').doc(_userId).collection('wallets');
@@ -227,6 +238,4 @@ class FirestoreService {
 
     await batch.commit();
   }
-
-
 }

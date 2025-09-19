@@ -1,7 +1,7 @@
 // lib/pages/home_page.dart 
 
 import 'dart:async'; // Diperlukan untuk StreamSubscription
-import 'package:budgetin_id/pages/account_router.dart';
+import 'package:budgetin_id/pages/account_page.dart';
 import 'package:budgetin_id/pages/more_page.dart';
 import 'package:budgetin_id/services/firestore_service.dart'; // Pastikan path ini benar
 import 'package:budgetin_id/pages/wallets/widgets/models/wallet_model.dart';
@@ -220,7 +220,7 @@ class _HomeContentState extends State<HomeContent> {
         title: const Text('Beranda'),
         backgroundColor: Colors.white,
         actions: const [
-          AccountRouter(),
+          AccountPage(),
         ],
       ),
       body: SingleChildScrollView(

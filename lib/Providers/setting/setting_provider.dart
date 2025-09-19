@@ -1,4 +1,4 @@
-// lib/presentation/providers/settings_provider.dart
+// lib/Providers/setting/setting_provider.dart
 
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -11,12 +11,10 @@ import '/services/storage_service.dart';
 class SettingsProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
-  final StorageService _storageService = StorageService(); // Asumsi Anda punya service ini
+  final StorageService _storageService = StorageService();
   final ImagePicker _picker = ImagePicker();
 
   User? get user => _authService.currentUser;
-  
-  // [BARU] Getter untuk memeriksa status anonim
   bool get isAnonymous => user?.isAnonymous ?? false;
 
   bool _isLoading = false;
@@ -27,29 +25,28 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
   
- 
-
-
   Future<void> signOut() async {
     _setLoading(true);
-    // Untuk pengguna anonim, signOut akan menghapus sesi mereka.
-    // Jika mereka kembali, sesi anonim baru akan dibuat.
     await _authService.signOut();
+    // Tidak perlu setLoading(false) karena widget tree akan rebuild
   }
 
-  // [PERBAIKAN] Fungsi deleteAccount menjadi lebih sederhana
+  // [PERBAIKAN] Fungsi ini sekarang hanya memanggil service
+  // dan membiarkan UI menangani semua jenis error.
   Future<void> deleteAccount() async {
     _setLoading(true);
     try {
       await _authService.deleteUserAccount();
-      // Navigasi akan ditangani oleh AuthWrapper secara otomatis
-    } on FirebaseAuthException {
-      _setLoading(false); // Pastikan loading berhenti jika ada error
-      rethrow; // Lempar lagi agar UI bisa menangani
+      // Jika berhasil, AuthWrapper akan menangani navigasi secara otomatis.
+      // Tidak perlu setLoading(false) di sini.
+    } catch (e) {
+      // Jika terjadi error (APAPUN JENISNYA), hentikan loading
+      _setLoading(false);
+      // dan lempar kembali error tersebut agar UI bisa menanganinya.
+      rethrow;
     }
   }
 
-  // [BARU] Fungsi untuk handle re-autentikasi lalu menghapus
   Future<void> reauthenticateAndDelete({String? password}) async {
     if (user == null) return;
     _setLoading(true);
@@ -65,7 +62,7 @@ class SettingsProvider with ChangeNotifier {
         throw Exception("Metode re-autentikasi tidak didukung.");
       }
 
-      // Jika re-autentikasi berhasil, coba hapus lagi
+      // Jika re-autentikasi berhasil, coba hapus lagi.
       await _authService.deleteUserAccount();
     } catch (e) {
       _setLoading(false);
@@ -74,7 +71,6 @@ class SettingsProvider with ChangeNotifier {
     }
   }
 
-  // --- Sisa Kode Anda (tidak perlu diubah) ---
   Future<void> updateDisplayName(String newName) async {
     if (user == null || newName.trim().isEmpty) return;
     _setLoading(true);
@@ -83,7 +79,7 @@ class SettingsProvider with ChangeNotifier {
       await _firestoreService.updateUserData({'displayName': newName});
       notifyListeners();
     } catch (e) {
-      debugPrint('e');
+      debugPrint('Error updating display name: $e');
     } finally {
       _setLoading(false);
     }
@@ -104,7 +100,7 @@ class SettingsProvider with ChangeNotifier {
       await _firestoreService.updateUserData({'photoURL': imageUrl});
       notifyListeners();
     } catch (e) {
-      debugPrint('e = $e');
+      debugPrint('Error uploading profile image: $e');
     } finally {
       _setLoading(false);
     }

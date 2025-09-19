@@ -1,5 +1,5 @@
 // lib/pages/statistics_page.dart
-import 'package:budgetin_id/pages/account_router.dart';
+import 'package:budgetin_id/pages/account_page.dart';
 import 'package:budgetin_id/pages/auth/service/auth_service.dart';
 import 'package:budgetin_id/pages/auth/service/lock.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -19,7 +19,7 @@ class StatisticsPage extends StatelessWidget {
         return Scaffold(
           appBar: AppBar(
             title: const Text('Statistik'),
-            actions: const [AccountRouter()],
+            actions: const [AccountPage()],
           ),
           body: isLoggedIn
               // [KONTEN ASLI] Tampilkan konten jika sudah login

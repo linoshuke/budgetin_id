@@ -1,4 +1,4 @@
-// lib/services/auth_service.dart (FIXED)
+// lib/services/auth_service.dart
 
 import 'package:budgetin_id/services/firestore_service.dart';
 import 'package:budgetin_id/pages/usageservice.dart'; // Pastikan path ini benar
@@ -6,8 +6,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
 
-// [PERBAIKAN] Pindahkan deklarasi class exception ke luar dari AuthService.
-// Sekarang ini adalah top-level class yang valid.
 class RequiresRecentLoginException implements Exception {
   final String message = "Silakan login ulang untuk melanjutkan operasi ini.";
   RequiresRecentLoginException();
@@ -17,7 +15,7 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   
-  final UsageLimiterService _usageLimiter = UsageLimiterService(); 
+  final UsageService _usageLimiter = UsageService(); 
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
@@ -88,7 +86,7 @@ class AuthService {
     }
   }
 
-  // Metode deleteUserAccount Anda sudah benar, tidak perlu diubah.
+  // [PERBAIKAN] Logika ini benar, tetapi errornya akan ditangani lebih baik di UI
   Future<void> deleteUserAccount() async {
     if (!await _usageLimiter.canPerformAction(LimitedAction.deleteAccount)) {
       throw UsageLimitExceededException(
@@ -99,15 +97,18 @@ class AuthService {
       throw Exception("Tidak ada pengguna yang login untuk dihapus.");
     }
     try {
+      // Hapus data Firestore DULUAN, sebelum menghapus akun Auth.
+      // Ini memastikan kita masih punya UID yang valid untuk mencari data.
       await FirestoreService().deleteUserData(); 
       await user.delete();
       await _usageLimiter.recordAction(LimitedAction.deleteAccount);
     } on FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {
         debugPrint('Operasi ini sensitif dan memerlukan autentikasi baru.');
+        // Lempar exception custom agar UI bisa membedakannya dengan jelas
         throw RequiresRecentLoginException();
       }
-      rethrow;
+      rethrow; // Lempar error Firebase lainnya
     }
   }
   

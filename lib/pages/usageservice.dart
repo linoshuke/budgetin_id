@@ -10,7 +10,7 @@ enum LimitedAction {
   deleteAccount,
 }
 
-class UsageLimiterService {
+class UsageService {
   static const _storageKey = 'usage_action_tracker';
   static const _cooldownPeriod = Duration(hours: 24);
 

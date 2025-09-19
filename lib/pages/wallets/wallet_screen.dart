@@ -1,6 +1,6 @@
 // lib/pages/wallets/wallet_screen.dart
 
-import 'package:budgetin_id/pages/account_router.dart';
+import 'package:budgetin_id/pages/account_page.dart';
 import 'package:budgetin_id/pages/auth/service/auth_service.dart';
 import 'package:budgetin_id/pages/auth/service/lock.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -154,7 +154,7 @@ class WalletsScreen extends StatelessWidget {
           return Scaffold(
             appBar: AppBar(
               title: const Text("Daftar Dompet Saya"),
-              actions: const [AccountRouter()],
+              actions: const [AccountPage()],
             ),
             body: StreamBuilder<List<Wallet>>(
               stream: firestoreService.getWallets(),
@@ -206,7 +206,7 @@ class WalletsScreen extends StatelessWidget {
           return Scaffold(
             appBar: AppBar(
               title: const Text("Dompet"),
-              actions: const [AccountRouter()],
+              actions: const [AccountPage()],
             ),
             body: const LockWidget(
               featureName: "Dompet",
