@@ -22,10 +22,8 @@ class HistoryPage extends StatelessWidget {
             actions: const [AccountPage()],
           ),
           body: isLoggedIn
-              // [KONTEN ASLI] Tampilkan konten jika sudah login
               ? const Center(child: Text('Halaman Riwayat Transaksi'))
-              // [KONTEN PENGGANTI] Tampilkan prompt jika belum login
-              : const LockWidget(
+                : const LockWidget(
                   featureName: "Riwayat",
                   featureIcon: Icons.receipt_long_rounded,
                 ),

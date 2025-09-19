@@ -6,7 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../pages/auth/service/auth_service.dart';
 import '/services/firestore_service.dart';
-import '/services/storage_service.dart';
+import '/services/storage_service.dart'; 
 
 class SettingsProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -15,7 +15,7 @@ class SettingsProvider with ChangeNotifier {
   final ImagePicker _picker = ImagePicker();
 
   User? get user => _authService.currentUser;
-  bool get isAnonymous => user?.isAnonymous ?? false;
+  bool get isAnonymous => user?.isAnonymous ?? true;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -26,47 +26,34 @@ class SettingsProvider with ChangeNotifier {
   }
   
   Future<void> signOut() async {
-    _setLoading(true);
     await _authService.signOut();
-    // Tidak perlu setLoading(false) karena widget tree akan rebuild
   }
 
-  // [PERBAIKAN] Fungsi ini sekarang hanya memanggil service
-  // dan membiarkan UI menangani semua jenis error.
-  Future<void> deleteAccount() async {
-    _setLoading(true);
-    try {
-      await _authService.deleteUserAccount();
-      // Jika berhasil, AuthWrapper akan menangani navigasi secara otomatis.
-      // Tidak perlu setLoading(false) di sini.
-    } catch (e) {
-      // Jika terjadi error (APAPUN JENISNYA), hentikan loading
-      _setLoading(false);
-      // dan lempar kembali error tersebut agar UI bisa menanganinya.
-      rethrow;
-    }
-  }
-
-  Future<void> reauthenticateAndDelete({String? password}) async {
-    if (user == null) return;
+  /// [PERBAIKAN] Logika diubah untuk selalu memprioritaskan verifikasi password jika tersedia.
+  Future<void> deleteAccountWithVerification({String? password}) async {
+    if (user == null) throw Exception("Pengguna tidak ditemukan.");
     _setLoading(true);
 
     try {
-      final providerId = user!.providerData.first.providerId;
+      // Cek apakah akun ini memiliki kredensial password.
+      final hasPasswordProvider = user!.providerData.any((p) => p.providerId == 'password');
 
-      if (providerId == 'password' && password != null) {
+      if (hasPasswordProvider) {
+        // Jika YA, password adalah satu-satunya metode yang diterima untuk re-autentikasi.
+        if (password == null || password.isEmpty) {
+          throw Exception("Password diperlukan untuk melanjutkan.");
+        }
         await _authService.reauthenticateWithPassword(password);
-      } else if (providerId == 'google.com') {
-        await _authService.reauthenticateWithGoogle();
       } else {
-        throw Exception("Metode re-autentikasi tidak didukung.");
+        // Jika TIDAK, baru kita coba metode lain seperti Google.
+        await _authService.reauthenticateWithGoogle();
       }
-
-      // Jika re-autentikasi berhasil, coba hapus lagi.
+      
+      // Jika re-autentikasi berhasil, sesi sekarang sudah "segar". Lanjutkan untuk menghapus akun.
       await _authService.deleteUserAccount();
+
     } catch (e) {
       _setLoading(false);
-      debugPrint('Error saat re-autentikasi dan hapus: $e');
       rethrow;
     }
   }

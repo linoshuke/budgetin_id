@@ -20,8 +20,6 @@ class AuthService {
   Stream<User?> get authStateChanges => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
 
-  // ... (Metode signIn, signUp, sendPasswordResetEmail Anda tetap sama)
-
   Future<User?> signInWithEmailAndPassword(
     String email,
     String password,
@@ -86,22 +84,20 @@ class AuthService {
     }
   }
 
-  // [PERBAIKAN] Logika ini benar, tetapi errornya akan ditangani lebih baik di UI
+  // [PERBAIKAN UTAMA] Logika penghapusan akun diubah untuk mencegah inkonsistensi data.
   Future<void> deleteUserAccount() async {
-    if (!await _usageLimiter.canPerformAction(LimitedAction.deleteAccount)) {
-      throw UsageLimitExceededException(
-          'Anda hanya dapat menghapus akun satu kali dalam 24 jam.');
-    }
+    //if (!await _usageLimiter.canPerformAction(LimitedAction.deleteAccount)) {
+     // throw UsageLimitExceededException(
+       //   'Anda hanya dapat menghapus akun satu kali dalam 24 jam.');
+    // }
     final user = currentUser;
     if (user == null) {
       throw Exception("Tidak ada pengguna yang login untuk dihapus.");
     }
     try {
-      // Hapus data Firestore DULUAN, sebelum menghapus akun Auth.
-      // Ini memastikan kita masih punya UID yang valid untuk mencari data.
       await FirestoreService().deleteUserData(); 
       await user.delete();
-      await _usageLimiter.recordAction(LimitedAction.deleteAccount);
+      // await _usageLimiter.recordAction(LimitedAction.deleteAccount);
     } on FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {
         debugPrint('Operasi ini sensitif dan memerlukan autentikasi baru.');
@@ -111,8 +107,6 @@ class AuthService {
       rethrow; // Lempar error Firebase lainnya
     }
   }
-  
-  // ... (Metode signInWithGoogle, signOut, reauthenticate Anda tetap sama)
   Future<User?> signInWithGoogle() async {
     try {
       await _googleSignIn.signOut();
@@ -154,7 +148,6 @@ class AuthService {
   }
 
   Future<void> reauthenticateWithGoogle() async {
-    // ... (implementasi Anda sudah benar)
     if (currentUser == null) throw Exception("User not logged in.");
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
