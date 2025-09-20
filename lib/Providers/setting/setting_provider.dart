@@ -20,6 +20,9 @@ class SettingsProvider with ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
+  bool get hasPasswordProvider => user?.providerData.any((p) => p.providerId == 'password') ?? false;
+  bool get hasGoogleProvider => user?.providerData.any((p) => p.providerId == 'google.com') ?? false;
+
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
@@ -27,38 +30,38 @@ class SettingsProvider with ChangeNotifier {
   
   Future<void> signOut() async {
     await _authService.signOut();
+    notifyListeners();
   }
 
-  /// [PERBAIKAN] Logika diubah untuk selalu memprioritaskan verifikasi password jika tersedia.
   Future<void> deleteAccountWithVerification({String? password}) async {
+    // ... (kode ini tidak berubah)
     if (user == null) throw Exception("Pengguna tidak ditemukan.");
     _setLoading(true);
 
     try {
-      // Cek apakah akun ini memiliki kredensial password.
-      final hasPasswordProvider = user!.providerData.any((p) => p.providerId == 'password');
+      final hasPassword = user!.providerData.any((p) => p.providerId == 'password');
 
-      if (hasPasswordProvider) {
-        // Jika YA, password adalah satu-satunya metode yang diterima untuk re-autentikasi.
+      if (hasPassword) {
         if (password == null || password.isEmpty) {
           throw Exception("Password diperlukan untuk melanjutkan.");
         }
         await _authService.reauthenticateWithPassword(password);
       } else {
-        // Jika TIDAK, baru kita coba metode lain seperti Google.
         await _authService.reauthenticateWithGoogle();
       }
       
-      // Jika re-autentikasi berhasil, sesi sekarang sudah "segar". Lanjutkan untuk menghapus akun.
       await _authService.deleteUserAccount();
+      notifyListeners();
 
     } catch (e) {
-      _setLoading(false);
       rethrow;
+    } finally {
+      _setLoading(false);
     }
   }
 
   Future<void> updateDisplayName(String newName) async {
+    // ... (kode ini tidak berubah)
     if (user == null || newName.trim().isEmpty) return;
     _setLoading(true);
     try {
@@ -73,6 +76,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> pickAndUploadProfileImage() async {
+    // ... (kode ini tidak berubah)
     if (user == null) return;
     _setLoading(true);
     try {
@@ -90,6 +94,50 @@ class SettingsProvider with ChangeNotifier {
       debugPrint('Error uploading profile image: $e');
     } finally {
       _setLoading(false);
+    }
+  }
+
+  Future<void> linkGoogleAccount() async {
+    // ... (kode ini tidak berubah)
+    _setLoading(true);
+    try {
+      await _authService.linkWithGoogle();
+      notifyListeners();
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'credential-already-in-use') {
+        throw Exception('Akun Google ini sudah terhubung dengan pengguna lain.');
+      }
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> addPasswordToAccount(String password) async {
+    // ... (kode ini tidak berubah)
+    _setLoading(true);
+    try {
+      await _authService.addPasswordLink(password);
+      notifyListeners();
+    } on FirebaseAuthException catch (e) {
+       if (e.code == 'weak-password') {
+        throw Exception('Password terlalu lemah.');
+      }
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // [BARU] Fungsi untuk mengirim email reset password ke pengguna yang sedang login
+  Future<void> sendPasswordResetEmailForCurrentUser() async {
+    if (user == null || user!.email == null) {
+      throw Exception("Tidak ada pengguna valid yang sedang login.");
+    }
+    try {
+      await _authService.sendPasswordResetEmail(user!.email!);
+    } catch (e) {
+      rethrow;
     }
   }
 }

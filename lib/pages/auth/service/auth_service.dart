@@ -14,8 +14,8 @@ class RequiresRecentLoginException implements Exception {
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
-  
-  final UsageService _usageLimiter = UsageService(); 
+
+  final UsageService _usageLimiter = UsageService();
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
@@ -26,7 +26,8 @@ class AuthService {
   ) async {
     if (!await _usageLimiter.canPerformAction(LimitedAction.loginOrSignup)) {
       throw UsageLimitExceededException(
-          'Anda telah mencapai batas maksimal login. Coba lagi dalam 24 jam.');
+        'Anda telah mencapai batas maksimal login. Coba lagi dalam 24 jam.',
+      );
     }
     try {
       final userCredential = await _auth.signInWithEmailAndPassword(
@@ -40,10 +41,15 @@ class AuthService {
     }
   }
 
-  Future<User?> signUpWithEmailAndPassword(String email, String password, String displayName) async {
+  Future<User?> signUpWithEmailAndPassword(
+    String email,
+    String password,
+    String displayName,
+  ) async {
     if (!await _usageLimiter.canPerformAction(LimitedAction.loginOrSignup)) {
       throw UsageLimitExceededException(
-          'Anda telah mencapai batas maksimal registrasi. Coba lagi dalam 24 jam.');
+        'Anda telah mencapai batas maksimal registrasi. Coba lagi dalam 24 jam.',
+      );
     }
     try {
       final UserCredential userCredential = await _auth
@@ -51,14 +57,19 @@ class AuthService {
       final user = userCredential.user;
       if (user != null) {
         await user.updateDisplayName(displayName);
-        await FirestoreService().initializeUserData(user, displayName: displayName);
+        await FirestoreService().initializeUserData(
+          user,
+          displayName: displayName,
+        );
         try {
           if (!user.emailVerified) {
             await user.sendEmailVerification();
           }
         } on FirebaseAuthException catch (e) {
           if (e.code == 'too-many-requests') {
-            debugPrint("Pendaftaran berhasil, tetapi pengiriman email verifikasi diblokir sementara.");
+            debugPrint(
+              "Pendaftaran berhasil, tetapi pengiriman email verifikasi diblokir sementara.",
+            );
           } else {
             rethrow;
           }
@@ -70,32 +81,31 @@ class AuthService {
       rethrow;
     }
   }
-  
+
   Future<void> sendPasswordResetEmail(String email) async {
-    if (!await _usageLimiter.canPerformAction(LimitedAction.resetPassword)) {
-      throw UsageLimitExceededException(
-          'Anda telah mencapai batas maksimal reset password. Coba lagi dalam 24 jam.');
-    }
+   // if (!await _usageLimiter.canPerformAction(LimitedAction.resetPassword)) {
+     // throw UsageLimitExceededException(
+       //   'Anda telah mencapai batas maksimal reset password. Coba lagi dalam 24 jam.');
+    // }
     try {
       await _auth.sendPasswordResetEmail(email: email);
-      await _usageLimiter.recordAction(LimitedAction.resetPassword);
+      // await _usageLimiter.recordAction(LimitedAction.resetPassword);
     } on FirebaseAuthException {
       rethrow;
     }
   }
 
-  // [PERBAIKAN UTAMA] Logika penghapusan akun diubah untuk mencegah inkonsistensi data.
   Future<void> deleteUserAccount() async {
     //if (!await _usageLimiter.canPerformAction(LimitedAction.deleteAccount)) {
-     // throw UsageLimitExceededException(
-       //   'Anda hanya dapat menghapus akun satu kali dalam 24 jam.');
+    // throw UsageLimitExceededException(
+    //   'Anda hanya dapat menghapus akun satu kali dalam 24 jam.');
     // }
     final user = currentUser;
     if (user == null) {
       throw Exception("Tidak ada pengguna yang login untuk dihapus.");
     }
     try {
-      await FirestoreService().deleteUserData(); 
+      await FirestoreService().deleteUserData();
       await user.delete();
       // await _usageLimiter.recordAction(LimitedAction.deleteAccount);
     } on FirebaseAuthException catch (e) {
@@ -107,20 +117,32 @@ class AuthService {
       rethrow; // Lempar error Firebase lainnya
     }
   }
+
   Future<User?> signInWithGoogle() async {
     try {
+      // Selalu sign out dari Google dulu untuk memastikan user bisa memilih akun
       await _googleSignIn.signOut();
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return null;
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      if (googleUser == null) return null; // User membatalkan login
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+
+      final UserCredential userCredential = await _auth.signInWithCredential(
+        credential,
+      );
       final user = userCredential.user;
+
       if (user != null) {
-        await FirestoreService().initializeUserData(user, displayName: user.displayName);
+        // Gunakan initializeUserData yang akan membuat data jika belum ada
+        await FirestoreService().initializeUserData(
+          user,
+          displayName: user.displayName,
+        );
       }
       return user;
     } catch (e) {
@@ -133,7 +155,7 @@ class AuthService {
     await _googleSignIn.signOut();
     await _auth.signOut();
   }
-  
+
   Future<void> reauthenticateWithPassword(String password) async {
     if (currentUser == null) throw Exception("User not logged in.");
     try {
@@ -161,6 +183,46 @@ class AuthService {
         idToken: googleAuth.idToken,
       );
       await currentUser!.reauthenticateWithCredential(credential);
+    } on FirebaseAuthException {
+      rethrow;
+    }
+  }
+
+  // [BARU] Fungsi untuk menautkan akun yang sedang login dengan Google
+  Future<void> linkWithGoogle() async {
+    if (currentUser == null) throw Exception("User not logged in.");
+
+    try {
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        throw Exception("Proses login Google dibatalkan.");
+      }
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      // Tautkan kredensial Google ke akun yang sedang aktif
+      await currentUser!.linkWithCredential(credential);
+    } on FirebaseAuthException {
+      rethrow;
+    }
+  }
+
+  // [BARU] Fungsi untuk menambahkan metode login password ke akun yang sudah ada
+  Future<void> addPasswordLink(String password) async {
+    if (currentUser == null || currentUser!.email == null) {
+      throw Exception("User tidak valid untuk menambahkan password.");
+    }
+
+    try {
+      final AuthCredential credential = EmailAuthProvider.credential(
+        email: currentUser!.email!,
+        password: password,
+      );
+      // Tautkan kredensial password ke akun yang sedang aktif
+      await currentUser!.linkWithCredential(credential);
     } on FirebaseAuthException {
       rethrow;
     }

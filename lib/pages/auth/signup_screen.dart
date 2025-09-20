@@ -1,4 +1,4 @@
-// lib/pages/auth/signup_screen.dart (FIXED)
+// lib/pages/auth/signup_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -24,7 +24,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   bool _isLoading = false;
   bool _isPasswordVisible = false;
-  // [BARU] State untuk visibilitas konfirmasi password
   bool _isConfirmPasswordVisible = false;
 
   @override
@@ -36,7 +35,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
-  // ... (Fungsi _setLoading dan _handleSignUp tetap sama, tidak perlu diubah)
   void _setLoading(bool value) {
     if (mounted) {
       setState(() {
@@ -45,7 +43,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
   
-   Future<void> _handleSignUp() async {
+  // [PERBAIKAN] Warning 'fetchSignInMethodsForEmail' is deprecated dihapus
+  Future<void> _handleSignUp() async {
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
 
@@ -63,59 +62,40 @@ class _SignUpScreenState extends State<SignUpScreen> {
       );
 
       if (mounted && user != null) {
-        // Pendaftaran berhasil sepenuhnya, lanjutkan seperti biasa
         _navigateToVerification();
       }
     } on FirebaseAuthException catch (e) {
-      // Jika errornya adalah karena terlalu banyak request (blokir keamanan)
-      if (e.code == 'too-many-requests' && mounted) {
-        // Kita curiga user sudah dibuat tapi respons diblokir.
-        // Mari kita coba login untuk memverifikasi.
-        await _trySignInAfterSignUpFailure(email, password);
-      } else {
-        // Untuk error lain (email sudah ada, password lemah, dll), tampilkan pesan seperti biasa
-        String message;
-        switch (e.code) {
-          case 'weak-password':
-            message = 'Password yang dimasukkan terlalu lemah.';
-            break;
-          case 'email-already-in-use':
-            message = 'Email ini sudah terdaftar. Silakan login.';
-            break;
-          case 'invalid-email':
-            message = 'Format email tidak valid.';
-            break;
-          default:
-            message = 'Registrasi gagal: ${e.message}';
-        }
-        _showErrorSnackBar(message);
+      String message;
+      // [FIX] Menggunakan pesan yang lebih aman tanpa memeriksa provider lain
+      switch (e.code) {
+        case 'email-already-in-use':
+          message = 'Email ini sudah terdaftar. Silakan login atau gunakan metode login lain.';
+          break;
+        case 'weak-password':
+          message = 'Password yang dimasukkan terlalu lemah.';
+          break;
+        case 'invalid-email':
+          message = 'Format email tidak valid.';
+          break;
+        case 'too-many-requests':
+          message = 'Terlalu banyak percobaan. Silakan coba lagi nanti.';
+          break;
+        default:
+          message = 'Registrasi gagal: ${e.message}';
       }
+      _showErrorSnackBar(message);
     } on UsageLimitExceededException catch (e) {
       _showErrorSnackBar(e.message, isWarning: true);
-    } finally {
+    } catch (e) {
+      _showErrorSnackBar('Terjadi kesalahan tidak dikenal: ${e.toString()}');
+    }
+    finally {
       _setLoading(false);
     }
   }
 
- Future<void> _trySignInAfterSignUpFailure(String email, String password) async {
-    try {
-      // Coba login dengan kredensial yang sama
-      final user = await _authService.signInWithEmailAndPassword(email, password);
-      if (user != null && mounted) {
-        // Jika login berhasil, berarti user memang sudah dibuat.
-        // Lanjutkan alur ke verifikasi email. Masalah teratasi!
-        _navigateToVerification();
-      }
-    } catch (_) {
-      // Jika login juga gagal, berarti memang ada masalah.
-      // Tampilkan pesan error yang lebih relevan kepada user.
-      _showErrorSnackBar(
-        "Registrasi diblokir karena aktivitas tidak wajar. Silakan coba lagi nanti."
-      );
-    }
-  }
-
   void _navigateToVerification() {
+    // ... (kode ini tidak berubah)
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (context) => const EmailVerificationScreen(),
@@ -124,6 +104,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   void _showErrorSnackBar(String message, {bool isWarning = false}) {
+    // ... (kode ini tidak berubah)
      if (!mounted) return;
      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -134,8 +115,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
       );
   }
+
   @override
   Widget build(BuildContext context) {
+    // ... (Seluruh UI widget build tidak berubah)
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -178,6 +161,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     TextFormField(
                       controller: _usernameController,
                       keyboardType: TextInputType.name,
+                      textCapitalization: TextCapitalization.words,
                       decoration: const InputDecoration(
                         labelText: 'Username',
                         prefixIcon: Icon(Icons.person_outline),
@@ -200,7 +184,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       validator: (value) {
                         if (value == null ||
                             value.isEmpty ||
-                            !value.contains('@')) {
+                            !value.contains('@') || !value.contains('.')) {
                           return 'Masukkan email yang valid';
                         }
                         return null;
@@ -236,12 +220,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _confirmPasswordController,
-                      // [REVISI] Menggunakan state-nya sendiri
                       obscureText: !_isConfirmPasswordVisible,
-                      decoration: InputDecoration( // [REVISI] Menambahkan decoration
+                      decoration: InputDecoration(
                         labelText: 'Konfirmasi Password',
                         prefixIcon: const Icon(Icons.lock_person_outlined),
-                        // [BARU] Menambahkan suffixIcon untuk toggle visibilitas
                         suffixIcon: IconButton(
                           icon: Icon(
                             _isConfirmPasswordVisible
@@ -266,7 +248,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              // ... (Sisa widget build tetap sama)
               if (_isLoading)
                 const Center(child: CircularProgressIndicator())
               else
