@@ -61,7 +61,7 @@ class WalletsScreen extends StatelessWidget {
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.category_outlined),
                         ),
-                        value: selectedCategory,
+                        initialValue: selectedCategory,
                         hint: const Text('Pilih kategori'),
                         items: categories.map((String category) {
                           return DropdownMenuItem<String>(
@@ -83,7 +83,7 @@ class WalletsScreen extends StatelessWidget {
                           border: OutlineInputBorder(),
                            prefixIcon: Icon(Icons.storage_outlined),
                         ),
-                        value: selectedLocation,
+                        initialValue: selectedLocation,
                         hint: const Text('Pilih lokasi'),
                         items: locations.map((String location) {
                           return DropdownMenuItem<String>(
