@@ -44,7 +44,7 @@ android {
         applicationId = "com.lino.budgetin_id"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 23  // Update this line
+        minSdk = flutter.minSdkVersion  // Update this line
         targetSdk = 33
         versionCode = flutter.versionCode
         versionName = flutter.versionName
