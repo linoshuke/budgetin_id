@@ -108,7 +108,6 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
         setState(() => _remainingCooldown--);
       } else {
         timer.cancel();
-        // Set state sekali lagi untuk memastikan UI terupdate saat timer selesai
         setState(() {});
       }
     });
@@ -116,7 +115,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
 
   /// Mengirim ulang email verifikasi.
   Future<void> _resendVerificationEmail() async {
-    if (_remainingCooldown > 0) return; // Jangan lakukan apa-apa jika masih cooldown
+    if (_remainingCooldown > 0) return;
 
     try {
       await FirebaseAuth.instance.currentUser?.sendEmailVerification();

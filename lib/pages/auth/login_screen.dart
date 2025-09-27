@@ -7,7 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:budgetin_id/pages/auth/signup_screen.dart';
 import 'package:budgetin_id/pages/webviewscreen.dart';
 import 'package:budgetin_id/pages/usageservice.dart';
-import 'package:budgetin_id/pages/home_page.dart';  
+import 'package:budgetin_id/pages/home_page.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -60,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _privacyRecognizer.dispose();
     super.dispose();
   }
-  
+
   void _openWebView(BuildContext context, String title, String url) {
     // ... (kode ini tidak berubah)
     Navigator.of(context).push(
@@ -69,8 +69,14 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-  
-  void _setLoading(bool value) { if (mounted) { setState(() { _isLoading = value; }); } }
+
+  void _setLoading(bool value) {
+    if (mounted) {
+      setState(() {
+        _isLoading = value;
+      });
+    }
+  }
 
   // [PERBAIKAN] Logika login email diperbarui sesuai rekomendasi keamanan Firebase
   Future<void> _handleEmailSignIn() async {
@@ -98,52 +104,71 @@ class _LoginScreenState extends State<LoginScreen> {
         case 'invalid-credential':
         case 'user-not-found':
         case 'wrong-password':
-          message = 'Email atau password salah. Jika Anda mendaftar via Google, silakan gunakan tombol "Login dengan Google".';
+          message =
+              'Email atau password salah. Jika Anda mendaftar via Google, silakan gunakan tombol "Masuk dengan Google".';
           break;
         case 'invalid-email':
-           message = 'Format email tidak valid.';
-           break;
+          message = 'Format email tidak valid.';
+          break;
         default:
-          message = 'Login gagal. Pastikan data Anda benar.';
+          message = 'Masuk gagal. Pastikan data Anda benar.';
       }
       if (mounted) _showErrorSnackBar(message);
     } on UsageLimitExceededException catch (e) {
       if (mounted) _showErrorSnackBar(e.message, isWarning: true);
     } catch (e) {
-      if (mounted) _showErrorSnackBar('Terjadi kesalahan yang tidak diketahui.');
+      if (mounted) {
+        _showErrorSnackBar('Terjadi kesalahan yang tidak diketahui.');
+      }
     } finally {
       _setLoading(false);
     }
   }
 
   Future<void> _handleGoogleSignIn() async {
-    // ... (kode ini tidak berubah)
-     _setLoading(true); 
-     try { 
-       final user = await _authService.signInWithGoogle();
-       if (user != null && mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const HomePage()),
-            (route) => false,
-          );
-       }
-      } catch (e) { 
-        if (mounted) { 
-          if (e is! Exception || !e.toString().contains('dibatalkan')) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Login dengan Google gagal.'))
-            );
-          }
-        }
-      } 
-      finally { 
-        _setLoading(false);
+    _setLoading(true);
+    try {
+      final user = await _authService.signInWithGoogle();
+      if (user != null && mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const HomePage()),
+          (route) => false,
+        );
       }
+    } on FirebaseAuthException catch (e) {
+      // Tangani error spesifik dari Firebase Auth
+      if (e.code == 'account-exists-with-different-credential') {
+        _showErrorSnackBar(
+          'Email ini sudah terdaftar dengan metode lain. Silakan login dengan email/password, lalu kaitkan akun Google Anda di halaman profil.',
+        );
+      } else if (e.code == 'operation-not-allowed') {
+        _showErrorSnackBar('Login dengan Google belum diaktifkan di backend.');
+      } else {
+        _showErrorSnackBar('Masuk dengan Google gagal: ${e.message}');
+      }
+    } catch (e) {
+      // Tangani error non-Firebase (misal: user cancel, network error, dll)
+      if (mounted && e.toString().contains('PlatformException')) {
+        // Misal: user membatalkan pemilihan akun Google
+        debugPrint("Google Sign-In dibatalkan atau gagal: $e");
+        // Opsional: tidak tampilkan snackbar jika dibatalkan
+        if (!e.toString().toLowerCase().contains('canceled') &&
+            !e.toString().toLowerCase().contains('dibatalkan')) {
+          _showErrorSnackBar('Terjadi kesalahan saat login dengan Google.');
+        }
+      } else {
+        _showErrorSnackBar('Terjadi kesalahan tak terduga.');
+      }
+    } finally {
+      _setLoading(false);
+    }
   }
 
-  // [MODIFIKASI] Fungsi ini sekarang menangani kasus 'user-not-found'
+  //  Fungsi ini sekarang menangani kasus 'user-not-found'
   void _handlePasswordReset({String? prefilledEmail}) {
-    final emailResetController = TextEditingController(text: prefilledEmail ?? '');
+    final emailResetController = TextEditingController(
+      text: prefilledEmail ?? '',
+    );
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -151,7 +176,9 @@ class _LoginScreenState extends State<LoginScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text("Masukkan email Anda. Link untuk reset password akan dikirim."),
+            const Text(
+              "Masukkan email Anda. Link untuk reset password akan dikirim.",
+            ),
             const SizedBox(height: 16),
             TextFormField(
               controller: emailResetController,
@@ -166,68 +193,75 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text("Batal")),
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text("Batal"),
+          ),
           FilledButton(
             onPressed: () async {
               if (emailResetController.text.trim().isEmpty) return;
-              
+
               final scaffoldMessenger = ScaffoldMessenger.of(context);
               final theme = Theme.of(context);
               final navigator = Navigator.of(context); // Simpan navigator
-              
+
               Navigator.of(dialogContext).pop();
               _setLoading(true);
 
               try {
-                await _authService
-                    .sendPasswordResetEmail(emailResetController.text.trim());
-                
-                if (!mounted) return; 
+                await _authService.sendPasswordResetEmail(
+                  emailResetController.text.trim(),
+                );
+
+                if (!mounted) return;
                 scaffoldMessenger.showSnackBar(
                   const SnackBar(
                     content: Text(
-                        "Jika email Anda terdaftar, link reset akan dikirim. Silakan periksa inbox & spam."),
+                      "Jika email Anda terdaftar, link reset akan dikirim. Silakan periksa inbox & spam.",
+                    ),
                     backgroundColor: Colors.green,
                   ),
                 );
-              } on FirebaseAuthException catch(e) {
-                  if (!mounted) return;
-                  String message = "Gagal mengirim permintaan. Coba lagi nanti.";
-                  if (e.code == 'invalid-email') {
-                    message = "Format email yang Anda masukkan tidak valid.";
-                  } else if (e.code == 'user-not-found') {
-                    // [BARU] Tampilkan dialog untuk mendaftar jika user tidak ditemukan
-                    showDialog(
-                      context: context,
-                      builder: (newDialogContext) => AlertDialog(
-                        title: const Text("Email Tidak Terdaftar"),
-                        content: const Text("Email ini belum terdaftar. Apakah Anda ingin membuat akun baru?"),
-                        actions: [
-                          TextButton(
-                            child: const Text("Batal"),
-                            onPressed: () => Navigator.of(newDialogContext).pop(),
-                          ),
-                          FilledButton(
-                            child: const Text("Daftar"),
-                            onPressed: () {
-                              Navigator.of(newDialogContext).pop();
-                              navigator.push(MaterialPageRoute(builder: (context) => const SignUpScreen()));
-                            },
-                          ),
-                        ],
+              } on FirebaseAuthException catch (e) {
+                if (!mounted) return;
+                String message = "Gagal mengirim permintaan. Coba lagi nanti.";
+                if (e.code == 'invalid-email') {
+                  message = "Format email yang Anda masukkan tidak valid.";
+                } else if (e.code == 'user-not-found') {
+                  showDialog(
+                    context: context,
+                    builder: (newDialogContext) => AlertDialog(
+                      title: const Text("Email Tidak Terdaftar"),
+                      content: const Text(
+                        "Email ini belum terdaftar. Apakah Anda ingin membuat akun baru?",
                       ),
-                    );
-                    return; // Hentikan eksekusi agar tidak menampilkan snackbar error
-                  }
-                   scaffoldMessenger.showSnackBar(
-                    SnackBar(
-                      content: Text(message),
-                      backgroundColor: theme.colorScheme.error,
+                      actions: [
+                        TextButton(
+                          child: const Text("Batal"),
+                          onPressed: () => Navigator.of(newDialogContext).pop(),
+                        ),
+                        FilledButton(
+                          child: const Text("Daftar"),
+                          onPressed: () {
+                            Navigator.of(newDialogContext).pop();
+                            navigator.push(
+                              MaterialPageRoute(
+                                builder: (context) => const SignUpScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   );
-              }
-              finally {
+                  return; // Hentikan eksekusi agar tidak menampilkan snackbar error
+                }
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(
+                    content: Text(message),
+                    backgroundColor: theme.colorScheme.error,
+                  ),
+                );
+              } finally {
                 if (mounted) {
                   _setLoading(false);
                 }
@@ -242,11 +276,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _showErrorSnackBar(String message, {bool isWarning = false}) {
     // ... (kode ini tidak berubah)
-    if(!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: isWarning ? Colors.orange.shade700 : Theme.of(context).colorScheme.error,
-    ));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isWarning
+            ? Colors.orange.shade700
+            : Theme.of(context).colorScheme.error,
+      ),
+    );
   }
 
   @override
@@ -265,76 +303,150 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(Icons.account_balance_wallet_rounded,
-                    size: 64, color: colorScheme.primary),
+                Icon(
+                  Icons.account_balance_wallet_rounded,
+                  size: 64,
+                  color: colorScheme.primary,
+                ),
                 const SizedBox(height: 24),
-                Text('Selamat Datang!',
-                    textAlign: TextAlign.center,
-                    style: textTheme.headlineMedium
-                        ?.copyWith(fontWeight: FontWeight.bold)),
+                Text(
+                  'Selamat Datang!',
+                  textAlign: TextAlign.center,
+                  style: textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 8),
-                Text('Login untuk melanjutkan mengelola keuanganmu.',
-                    textAlign: TextAlign.center, style: textTheme.bodyLarge),
+                Text(
+                  'Masuk untuk melanjutkan mengelola keuanganmu.',
+                  textAlign: TextAlign.center,
+                  style: textTheme.bodyLarge,
+                ),
                 const SizedBox(height: 40),
-                Form( key: _formKey, child: Column( children: [ 
-                  TextFormField( controller: _emailController, 
-                  keyboardType: TextInputType.emailAddress, 
-                  decoration: const InputDecoration( labelText: 'Email', 
-                  prefixIcon: Icon(Icons.email_outlined)), 
-                  validator: (value) => (value == null || value.trim().isEmpty) ? 'Email tidak boleh kosong' : null), 
-                  const SizedBox(height: 16), TextFormField( 
-                    controller: _passwordController, 
-                    obscureText: !_isPasswordVisible, 
-                    decoration: InputDecoration( 
-                      labelText: 'Password', prefixIcon: const Icon(Icons.lock_outline), 
-                      suffixIcon: IconButton( icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off), onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible))), 
-                      validator: (value) => (value == null || value.isEmpty) ? 'Password tidak boleh kosong' : null), 
-                      ],
-                       ), 
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: 'Email',
+                          prefixIcon: Icon(Icons.email_outlined),
+                        ),
+                        validator: (value) =>
+                            (value == null || value.trim().isEmpty)
+                            ? 'Email tidak boleh kosong'
+                            : null,
                       ),
-                Align( alignment: Alignment.centerRight, 
-                child: TextButton( onPressed: _isLoading ? null : () => _handlePasswordReset(), 
-                child: const Text('Lupa Password?'))), const SizedBox(height: 16), 
-                if (_isLoading) 
-                  const Center(child: Padding(padding: EdgeInsets.all(48.0), child: CircularProgressIndicator())) 
-                else Column( 
-                  crossAxisAlignment: CrossAxisAlignment.stretch, 
-                  children: [ 
-                    FilledButton( onPressed: _handleEmailSignIn, child: const Text('Masuk', style: TextStyle(fontSize: 16))), 
-                    const SizedBox(height: 16), 
-                    Row(children: [ 
-                      const Expanded(child: Divider()), 
-                      Padding( padding: const EdgeInsets.symmetric(horizontal: 8.0), 
-                      child: Text('ATAU', style: textTheme.bodySmall ?.copyWith(color: Colors.grey.shade600))), 
-                      const Expanded(child: Divider()) 
-                    ]), 
-                    const SizedBox(height: 16), 
-                    OutlinedButton.icon( 
-                      icon: Image.asset('assets/icons/google.png', height: 22.0), 
-                      label: const Text('Login dengan Google'), 
-                      onPressed: _handleGoogleSignIn,
-                    ), 
-                  ], 
-                 ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: !_isPasswordVisible,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isPasswordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () => setState(
+                              () => _isPasswordVisible = !_isPasswordVisible,
+                            ),
+                          ),
+                        ),
+                        validator: (value) => (value == null || value.isEmpty)
+                            ? 'Password tidak boleh kosong'
+                            : null,
+                      ),
+                    ],
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _isLoading ? null : () => _handlePasswordReset(),
+                    child: const Text('Lupa Password?'),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (_isLoading)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(48.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      FilledButton(
+                        onPressed: _handleEmailSignIn,
+                        child: const Text(
+                          'Masuk',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          const Expanded(child: Divider()),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8.0,
+                            ),
+                            child: Text(
+                              'ATAU',
+                              style: textTheme.bodySmall?.copyWith(
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ),
+                          const Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        icon: Image.asset(
+                          'assets/icons/google.png',
+                          height: 22.0,
+                        ),
+                        label: const Text('Masuk dengan Google'),
+                        onPressed: _handleGoogleSignIn,
+                      ),
+                    ],
+                  ),
                 const SizedBox(height: 24),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Text("Belum punya akun?"),
-                  TextButton(
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text("Belum punya akun?"),
+                    TextButton(
                       onPressed: _isLoading
                           ? null
-                          : () => Navigator.of(context).push(MaterialPageRoute(
-                              builder: (context) => const SignUpScreen())),
-                      child: const Text('Daftar di sini'))
-                ]),
+                          : () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const SignUpScreen(),
+                              ),
+                            ),
+                      child: const Text('Daftar di sini'),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 24),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: RichText(
                     textAlign: TextAlign.center,
                     text: TextSpan(
-                      style: textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+                      style: textTheme.bodySmall?.copyWith(
+                        color: Colors.grey.shade600,
+                      ),
                       children: [
-                        const TextSpan(text: 'Dengan login, Anda menyetujui '),
+                        const TextSpan(text: 'Dengan Masuk, Anda menyetujui '),
                         TextSpan(
                           text: 'Ketentuan Layanan',
                           style: TextStyle(

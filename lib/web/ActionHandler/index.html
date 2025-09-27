@@ -1,198 +1,340 @@
 <!DOCTYPE html>
 <html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Proses Aksi - Budgetin</title>
-    
+
     <style>
-        /* ... CSS Anda yang lain tetap sama ... */
-        :root {
-            --primary-color: #4f46e5;
-            --success-color: #16a34a;
-            --error-color: #dc2626;
-            --text-dark: #1e293b;
-            --text-light: #64748b;
-            --bg-light: #f8fafc;
-            --white: #ffffff;
-            --border-color: #e2e8f0;
+      /* ... CSS Anda yang lain tetap sama ... */
+      :root {
+        --primary-color: #4f46e5;
+        --success-color: #16a34a;
+        --error-color: #dc2626;
+        --text-dark: #1e293b;
+        --text-light: #64748b;
+        --bg-light: #f8fafc;
+        --white: #ffffff;
+        --border-color: #e2e8f0;
+      }
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+      body {
+        font-family: "Inter", sans-serif;
+        margin: 0;
+        background-color: var(--bg-light);
+        color: var(--text-light);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        text-align: center;
+        padding: 20px;
+      }
+      .card {
+        background-color: var(--white);
+        padding: 40px;
+        border-radius: 16px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+        max-width: 400px;
+        width: 100%;
+        border: 1px solid var(--border-color);
+      }
+      .icon {
+        font-size: 50px;
+        line-height: 1;
+        margin-bottom: 20px;
+      }
+      h1 {
+        color: var(--text-dark);
+        font-size: 24px;
+        font-weight: 700;
+        margin: 0 0 12px 0;
+      }
+      p#status-message {
+        font-size: 16px;
+        line-height: 1.6;
+        margin: 0 0 24px 0;
+        min-height: 40px;
+      }
+      .spinner {
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border-left-color: var(--primary-color);
+        animation: spin 1s ease infinite;
+        margin: 0 auto 24px auto;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
         }
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; margin: 0; background-color: var(--bg-light); color: var(--text-light); display: flex; justify-content: center; align-items: center; min-height: 100vh; text-align: center; padding: 20px; }
-        .card { background-color: var(--white); padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05); max-width: 400px; width: 100%; border: 1px solid var(--border-color); }
-        .icon { font-size: 50px; line-height: 1; margin-bottom: 20px; }
-        h1 { color: var(--text-dark); font-size: 24px; font-weight: 700; margin: 0 0 12px 0; }
-        p#status-message { font-size: 16px; line-height: 1.6; margin: 0 0 24px 0; min-height: 40px; }
-        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: var(--primary-color); animation: spin 1s ease infinite; margin: 0 auto 24px auto; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .action-button { display: none; width: 100%; padding: 14px 20px; border-radius: 8px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; transition: background-color 0.2s; }
-        .btn-success { background-color: var(--success-color); color: var(--white); }
-        .btn-error { background-color: var(--error-color); color: var(--white); }
-        .form-container { display: none; text-align: left; }
-        .form-container label { font-weight: 500; color: var(--text-dark); display: block; margin-bottom: 8px; }
-        .form-container button { width: 100%; padding: 14px; border: none; border-radius: 8px; background-color: var(--primary-color); color: white; font-size: 16px; font-weight: 600; cursor: pointer; }
-        
-        /* [BARU] Style untuk input password dengan ikon */
-        .password-wrapper {
-            position: relative;
-            margin-bottom: 16px;
-        }
-        .password-wrapper input {
-            width: 100%;
-            padding: 12px 40px 12px 12px; /* Beri ruang di kanan untuk ikon */
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        .password-wrapper .toggle-password {
-            position: absolute;
-            top: 50%;
-            right: 12px;
-            transform: translateY(-50%);
-            cursor: pointer;
-            color: #94a3b8;
-        }
+      }
+      .action-button {
+        display: none;
+        width: 100%;
+        padding: 14px 20px;
+        border-radius: 8px;
+        border: none;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+      .btn-success {
+        background-color: var(--success-color);
+        color: var(--white);
+      }
+      .btn-error {
+        background-color: var(--error-color);
+        color: var(--white);
+      }
+      .form-container {
+        display: none;
+        text-align: left;
+      }
+      .form-container label {
+        font-weight: 500;
+        color: var(--text-dark);
+        display: block;
+        margin-bottom: 8px;
+      }
+      .form-container button {
+        width: 100%;
+        padding: 14px;
+        border: none;
+        border-radius: 8px;
+        background-color: var(--primary-color);
+        color: white;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      /* [BARU] Style untuk input password dengan ikon */
+      .password-wrapper {
+        position: relative;
+        margin-bottom: 16px;
+      }
+      .password-wrapper input {
+        width: 100%;
+        padding: 12px 40px 12px 12px; /* Beri ruang di kanan untuk ikon */
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        font-size: 16px;
+        box-sizing: border-box;
+      }
+      .password-wrapper .toggle-password {
+        position: absolute;
+        top: 50%;
+        right: 12px;
+        transform: translateY(-50%);
+        cursor: pointer;
+        color: #94a3b8;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="card" id="card">
-        <div id="icon-placeholder" class="icon">⏳</div>
-        <h1 id="title">Memproses Permintaan Anda</h1>
-        <p id="status-message">Mohon tunggu sebentar...</p>
-        <div id="spinner" class="spinner"></div>
+      <div id="icon-placeholder" class="icon">⏳</div>
+      <h1 id="title">Memproses Permintaan Anda</h1>
+      <p id="status-message">Mohon tunggu sebentar...</p>
+      <div id="spinner" class="spinner"></div>
 
-        <div id="reset-password-form" class="form-container">
-            <label for="new-password">Password Baru</label>
-            <!-- [PERBAIKAN] Struktur input password diubah -->
-            <div class="password-wrapper">
-                <input type="password" id="new-password" placeholder="Minimal 6 karakter" required>
-                <span id="toggle-password" class="toggle-password">👁️</span>
-            </div>
-            <button id="submit-password-reset">Atur Ulang Password</button>
+      <div id="reset-password-form" class="form-container">
+        <label for="new-password">Password Baru</label>
+        <!-- [PERBAIKAN] Struktur input password diubah -->
+        <div class="password-wrapper">
+          <input
+            type="password"
+            id="new-password"
+            placeholder="Minimal 6 karakter"
+            required
+          />
+          <span id="toggle-password" class="toggle-password">👁️</span>
         </div>
+        <button id="submit-password-reset">Atur Ulang Password</button>
+      </div>
 
-        <button id="action-button" class="action-button">Kembali ke Aplikasi</button>
+      <button id="action-button" class="action-button">
+        Kembali ke Aplikasi
+      </button>
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-        import { getAuth, applyActionCode, verifyPasswordResetCode, confirmPasswordReset } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
-        
-        // ... Konfigurasi Firebase Anda ...
-        const firebaseConfig = {
-             apiKey: "AIzaSyD1ZlVesx6Td4m_CcgC-GMWqmssaRaj5Ng",
-             authDomain: "budgetin-id.firebaseapp.com",
-             projectId: "budgetin-id",
-             storageBucket: "budgetin-id.firebasestorage.app",
-             messagingSenderId: "412881082749",
-             appId: "1:412881082749:web:6e521dce726889a0745414",
-             measurementId: "G-MCYVSKM03L"
-        };
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+      import {
+        getAuth,
+        applyActionCode,
+        verifyPasswordResetCode,
+        confirmPasswordReset,
+      } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
-        // ... Elemen UI ...
-        const newPasswordInput = document.getElementById('new-password');
-        const togglePassword = document.getElementById('toggle-password');
-        
-        // [BARU] Event listener untuk toggle visibilitas password
-        togglePassword.addEventListener('click', function () {
-            const type = newPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            newPasswordInput.setAttribute('type', type);
-            this.textContent = type === 'password' ? '🙈' : '👁️';
-        });
+      // ... Konfigurasi Firebase Anda ...
+      const firebaseConfig = {
+        apiKey: "AIzaSyD1ZlVesx6Td4m_CcgC-GMWqmssaRaj5Ng",
+        authDomain: "budgetin-id.firebaseapp.com",
+        projectId: "budgetin-id",
+        storageBucket: "budgetin-id.firebasestorage.app",
+        messagingSenderId: "412881082749",
+        appId: "1:412881082749:web:6e521dce726889a0745414",
+        measurementId: "G-MCYVSKM03L",
+      };
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
 
-        // ... sisa kode JavaScript Anda yang lain tetap sama ...
-        const iconEl = document.getElementById('icon-placeholder');
-        const titleEl = document.getElementById('title');
-        const statusMessageEl = document.getElementById('status-message');
-        const spinnerEl = document.getElementById('spinner');
-        const actionButtonEl = document.getElementById('action-button');
-        const resetPasswordFormEl = document.getElementById('reset-password-form');
-        const submitPasswordBtn = document.getElementById('submit-password-reset');
+      // ... Elemen UI ...
+      const newPasswordInput = document.getElementById("new-password");
+      const togglePassword = document.getElementById("toggle-password");
 
-    function getURLParameter(name) {
-    return new URL(window.location.href).searchParams.get(name);
-}
+      // [BARU] Event listener untuk toggle visibilitas password
+      togglePassword.addEventListener("click", function () {
+        const type =
+          newPasswordInput.getAttribute("type") === "password"
+            ? "text"
+            : "password";
+        newPasswordInput.setAttribute("type", type);
+        this.textContent = type === "password" ? "🙈" : "👁️";
+      });
 
-// [PERBAIKAN] Modifikasi fungsi openApp untuk mengirim sinyal
-function openApp(action) {
-    let url = 'budgetin://'; // Skema dasar
-    if (action === 'resetPasswordSuccess') {
-        url = 'budgetin://auth-action?mode=resetPasswordSuccess';
-    }
-    window.location.href = url;
-}
+      // ... sisa kode JavaScript Anda yang lain tetap sama ...
+      const iconEl = document.getElementById("icon-placeholder");
+      const titleEl = document.getElementById("title");
+      const statusMessageEl = document.getElementById("status-message");
+      const spinnerEl = document.getElementById("spinner");
+      const actionButtonEl = document.getElementById("action-button");
+      const resetPasswordFormEl = document.getElementById(
+        "reset-password-form"
+      );
+      const submitPasswordBtn = document.getElementById(
+        "submit-password-reset"
+      );
 
-function showUIState(state, title, message, icon, action) {
-    spinnerEl.style.display = 'none';
-    resetPasswordFormEl.style.display = 'none';
-    titleEl.innerText = title;
-    statusMessageEl.innerText = message;
-    iconEl.innerText = icon;
+      function getURLParameter(name) {
+        return new URL(window.location.href).searchParams.get(name);
+      }
 
-    if (state === 'success' || state === 'error') {
-        actionButtonEl.innerText = state === 'success' ? 'Buka Aplikasi' : 'Kembali ke Aplikasi';
-        actionButtonEl.className = `action-button ${state === 'success' ? 'btn-success' : 'btn-error'}`;
-        actionButtonEl.style.display = 'block';
-        actionButtonEl.onclick = () => openApp(action);
-    }
-}
-        window.onload = function() {
-            const mode = getURLParameter('mode');
-            const actionCode = getURLParameter('oobCode');
-            if (!actionCode) {
-                showUIState('error', 'Link Tidak Valid', 'Pastikan Anda menggunakan link yang benar dari email.', '❌');
+      // [PERBAIKAN] Modifikasi fungsi openApp untuk mengirim sinyal
+      function openApp(action) {
+        let url = "budgetin://"; // Skema dasar
+        if (action === "resetPasswordSuccess") {
+          url = "budgetin://auth-action?mode=resetPasswordSuccess";
+        }
+        window.location.href = url;
+      }
+
+      function showUIState(state, title, message, icon, action) {
+        spinnerEl.style.display = "none";
+        resetPasswordFormEl.style.display = "none";
+        titleEl.innerText = title;
+        statusMessageEl.innerText = message;
+        iconEl.innerText = icon;
+
+        if (state === "success" || state === "error") {
+          actionButtonEl.innerText =
+            state === "success" ? "Buka Aplikasi" : "Kembali ke Aplikasi";
+          actionButtonEl.className = `action-button ${
+            state === "success" ? "btn-success" : "btn-error"
+          }`;
+          actionButtonEl.style.display = "block";
+          actionButtonEl.onclick = () => openApp(action);
+        }
+      }
+      window.onload = function () {
+        const mode = getURLParameter("mode");
+        const actionCode = getURLParameter("oobCode");
+        if (!actionCode) {
+          showUIState(
+            "error",
+            "Link Tidak Valid",
+            "Pastikan Anda menggunakan link yang benar dari email.",
+            "❌"
+          );
+          return;
+        }
+        switch (mode) {
+          case "verifyEmail":
+            handleVerifyEmail(actionCode);
+            break;
+          case "resetPassword":
+            handleResetPassword(actionCode);
+            break;
+          default:
+            showUIState(
+              "error",
+              "Tindakan Tidak Dikenali",
+              "Link ini tidak valid atau tidak didukung.",
+              "❓"
+            );
+        }
+      };
+      function handleVerifyEmail(code) {
+        applyActionCode(auth, code)
+          .then(() => {
+            showUIState(
+              "success",
+              "Verifikasi Berhasil!",
+              "Email Anda telah diverifikasi. Silakan kembali ke aplikasi.",
+              "✅"
+            );
+            setTimeout(openApp, 2000);
+          })
+          .catch((error) => {
+            showUIState(
+              "error",
+              "Verifikasi Gagal",
+              "Link verifikasi tidak valid atau sudah kedaluwarsa. Silakan minta link baru dari aplikasi.",
+              "❌"
+            );
+          });
+      }
+      function handleResetPassword(code) {
+        verifyPasswordResetCode(auth, code)
+          .then((email) => {
+            spinnerEl.style.display = "none";
+            iconEl.innerText = "🔑";
+            titleEl.innerText = "Atur Ulang Password";
+            statusMessageEl.innerText = `Masukkan password baru untuk akun ${email}.`;
+            resetPasswordFormEl.style.display = "block";
+            submitPasswordBtn.onclick = () => {
+              const newPassword = newPasswordInput.value;
+              if (newPassword.length < 6) {
+                statusMessageEl.innerText =
+                  "Password minimal harus 6 karakter.";
+                statusMessageEl.style.color = "var(--error-color)";
                 return;
-            }
-            switch (mode) {
-                case 'verifyEmail': handleVerifyEmail(actionCode); break;
-                case 'resetPassword': handleResetPassword(actionCode); break;
-                default: showUIState('error', 'Tindakan Tidak Dikenali', 'Link ini tidak valid atau tidak didukung.', '❓');
-            }
-        };
-        function handleVerifyEmail(code) {
-            applyActionCode(auth, code)
+              }
+              spinnerEl.style.display = "block";
+              resetPasswordFormEl.style.display = "none";
+              confirmPasswordReset(auth, code, newPassword)
                 .then(() => {
-                    showUIState('success', 'Verifikasi Berhasil!', 'Email Anda telah diverifikasi. Silakan kembali ke aplikasi.', '✅');
-                    setTimeout(openApp, 2000);
+                  showUIState(
+                    "success",
+                    "Password Diubah!",
+                    "Password Anda berhasil direset. Anda sekarang bisa login dengan password baru.",
+                    "✅"
+                  );
+                  setTimeout(() => openApp("resetPasswordSuccess"), 3000);
                 })
                 .catch((error) => {
-                    showUIState('error', 'Verifikasi Gagal', 'Link verifikasi tidak valid atau sudah kedaluwarsa. Silakan minta link baru dari aplikasi.', '❌');
+                  showUIState(
+                    "error",
+                    "Gagal Mengubah Password",
+                    "Terjadi kesalahan. Silakan coba minta link reset baru dari aplikasi.",
+                    "❌"
+                  );
                 });
-        }
-        function handleResetPassword(code) {
-            verifyPasswordResetCode(auth, code)
-                .then((email) => {
-                    spinnerEl.style.display = 'none';
-                    iconEl.innerText = '🔑';
-                    titleEl.innerText = 'Atur Ulang Password';
-                    statusMessageEl.innerText = `Masukkan password baru untuk akun ${email}.`;
-                    resetPasswordFormEl.style.display = 'block';
-                    submitPasswordBtn.onclick = () => {
-                        const newPassword = newPasswordInput.value;
-                        if (newPassword.length < 6) {
-                            statusMessageEl.innerText = 'Password minimal harus 6 karakter.';
-                            statusMessageEl.style.color = 'var(--error-color)';
-                            return;
-                        }
-                        spinnerEl.style.display = 'block';
-                        resetPasswordFormEl.style.display = 'none';
-                        confirmPasswordReset(auth, code, newPassword)
-                            .then(() => {
-                                showUIState('success', 'Password Diubah!', 'Password Anda berhasil direset. Anda sekarang bisa login dengan password baru.', '✅');
-                                setTimeout(() => openApp('resetPasswordSuccess'), 3000);
-                            })
-                            .catch((error) => {
-                                showUIState('error', 'Gagal Mengubah Password', 'Terjadi kesalahan. Silakan coba minta link reset baru dari aplikasi.', '❌');
-                            });
-                    };
-                })
-                .catch((error) => {
-                    showUIState('error', 'Link Reset Tidak Valid', 'Link reset password tidak valid atau sudah kedaluwarsa. Silakan minta link baru dari aplikasi.', '❌');
-                });
-        }
+            };
+          })
+          .catch((error) => {
+            showUIState(
+              "error",
+              "Link Reset Tidak Valid",
+              "Link reset password tidak valid atau sudah kedaluwarsa. Silakan minta link baru dari aplikasi.",
+              "❌"
+            );
+          });
+      }
     </script>
-</body>
+  </body>
 </html>

@@ -29,7 +29,6 @@ class WalletsScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) {
-        // StatefulBuilder digunakan agar UI di dalam dialog (seperti dropdown) bisa diperbarui.
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(

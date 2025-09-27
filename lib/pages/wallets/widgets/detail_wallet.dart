@@ -56,7 +56,7 @@ class _WalletDetailScreenState extends State<WalletDetailScreen> {
   void _goToNextMonth() {
     final now = DateTime.now();
     final nextMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 1);
-    if (nextMonth.isAfter(now)) return; // Mencegah navigasi ke masa depan
+    if (nextMonth.isAfter(now)) return; 
     setState(() {
       _selectedMonth = nextMonth;
       _updateDateRange();

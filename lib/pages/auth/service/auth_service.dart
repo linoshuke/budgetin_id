@@ -121,8 +121,7 @@ class AuthService {
   Future<User?> signInWithGoogle() async {
     try {
       // Selalu sign out dari Google dulu untuk memastikan user bisa memilih akun
-      await _googleSignIn.signOut();
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signInSilently() ?? await _googleSignIn.signIn();
       if (googleUser == null) return null; // User membatalkan login
 
       final GoogleSignInAuthentication googleAuth =
