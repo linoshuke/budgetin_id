@@ -108,9 +108,6 @@ class FirestoreService {
     await batch.commit();
   }
 
-  // --- Sisa fungsi (addWallet, deleteWallet, getWallets, dll.) tidak perlu diubah ---
-  // --- Biarkan seperti semula ---
-
   Future<void> addWallet({
     required String name,
     required String category,
