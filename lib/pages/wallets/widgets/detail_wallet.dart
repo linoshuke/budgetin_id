@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import '/models/transaction_model.dart';
+import 'models/transaction_model.dart';
 import 'models/wallet_model.dart';
 import '/services/firestore_service.dart';
 import '../thousand_formatter.dart';

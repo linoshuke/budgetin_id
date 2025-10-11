@@ -2,7 +2,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:budgetin_id/pages/auth/email_verification.dart'; 
+import 'package:budgetin_id/pages/auth/service/email_verification.dart'; 
 import 'package:budgetin_id/pages/auth/service/auth_service.dart';
 import 'package:budgetin_id/pages/usageservice.dart'; 
 import 'package:budgetin_id/pages/webviewscreen.dart';

@@ -62,7 +62,6 @@ class _AuthHandlerState extends State<AuthHandler> {
       final mode = uri.queryParameters['mode'];
 
       if (mode == 'resetPasswordSuccess') {
-        // [PERBAIKAN] Tambahkan pengecekan 'mounted' sebelum menggunakan context
         if (!mounted) return;
         
         debugPrint('Password reset detected. Forcing sign out...');

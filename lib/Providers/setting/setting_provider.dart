@@ -20,8 +20,8 @@ class SettingsProvider with ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  bool get hasPasswordProvider => user?.providerData.any((p) => p.providerId == 'password') ?? false;
-  bool get hasGoogleProvider => user?.providerData.any((p) => p.providerId == 'google.com') ?? false;
+  bool get hasPasswordProvider => _authService.currentUserProviders.contains('password');
+  bool get hasGoogleProvider => _authService.currentUserProviders.contains('google.com');
 
   void _setLoading(bool value) {
     _isLoading = value;
@@ -33,23 +33,24 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // [PERBAIKAN] Logika ini sekarang sudah valid karena metode di AuthService sudah ada.
   Future<void> deleteAccountWithVerification({String? password}) async {
-    // ... (kode ini tidak berubah)
     if (user == null) throw Exception("Pengguna tidak ditemukan.");
     _setLoading(true);
 
     try {
-      final hasPassword = user!.providerData.any((p) => p.providerId == 'password');
-
-      if (hasPassword) {
+      // Cek apakah akun punya metode login password
+      if (hasPasswordProvider) {
         if (password == null || password.isEmpty) {
           throw Exception("Password diperlukan untuk melanjutkan.");
         }
         await _authService.reauthenticateWithPassword(password);
       } else {
+        // Jika tidak ada password (misal login hanya via Google), re-autentikasi via Google
         await _authService.reauthenticateWithGoogle();
       }
       
+      // Setelah re-autentikasi berhasil, lanjutkan hapus akun
       await _authService.deleteUserAccount();
       notifyListeners();
 
@@ -61,26 +62,25 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> updateDisplayName(String newName) async {
-    // ... (kode ini tidak berubah)
     if (user == null || newName.trim().isEmpty) return;
     _setLoading(true);
     try {
       await user!.updateDisplayName(newName);
-      await _firestoreService.updateUserData({'displayName': newName});
+      await _firestoreService.updateUserData({'displayName': newName.trim()});
       notifyListeners();
     } catch (e) {
       debugPrint('Error updating display name: $e');
+      rethrow;
     } finally {
       _setLoading(false);
     }
   }
 
   Future<void> pickAndUploadProfileImage() async {
-    // ... (kode ini tidak berubah)
     if (user == null) return;
     _setLoading(true);
     try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
       if (image == null) {
         _setLoading(false);
         return;
@@ -92,36 +92,39 @@ class SettingsProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('Error uploading profile image: $e');
+      rethrow;
     } finally {
       _setLoading(false);
     }
   }
 
   Future<void> linkGoogleAccount() async {
-    // ... (kode ini tidak berubah)
     _setLoading(true);
     try {
       await _authService.linkWithGoogle();
-      notifyListeners();
+      notifyListeners(); // Beritahu UI bahwa provider telah diperbarui
     } on FirebaseAuthException catch (e) {
       if (e.code == 'credential-already-in-use') {
         throw Exception('Akun Google ini sudah terhubung dengan pengguna lain.');
+      } else if (e.code == 'provider-already-linked') {
+        // Kasus ini bisa diabaikan atau ditangani dengan pesan "Akun sudah tertaut"
+      } else {
+        rethrow;
       }
-      rethrow;
     } finally {
       _setLoading(false);
     }
   }
 
+  // [PERBAIKAN] Memanggil metode 'addPasswordToAccount' yang sudah didefinisikan di AuthService
   Future<void> addPasswordToAccount(String password) async {
-    // ... (kode ini tidak berubah)
     _setLoading(true);
     try {
-      await _authService.addPasswordLink(password);
-      notifyListeners();
+      await _authService.addPasswordToAccount(password);
+      notifyListeners(); // Beritahu UI bahwa provider (password) telah ditambahkan
     } on FirebaseAuthException catch (e) {
        if (e.code == 'weak-password') {
-        throw Exception('Password terlalu lemah.');
+        throw Exception('Password terlalu lemah. Gunakan minimal 6 karakter.');
       }
       rethrow;
     } finally {
@@ -129,7 +132,6 @@ class SettingsProvider with ChangeNotifier {
     }
   }
 
-  // [BARU] Fungsi untuk mengirim email reset password ke pengguna yang sedang login
   Future<void> sendPasswordResetEmailForCurrentUser() async {
     if (user == null || user!.email == null) {
       throw Exception("Tidak ada pengguna valid yang sedang login.");

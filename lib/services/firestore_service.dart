@@ -3,7 +3,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart' hide Transaction;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../models/transaction_model.dart';
+import '../pages/wallets/widgets/models/transaction_model.dart';
 import '../pages/wallets/widgets/models/wallet_model.dart';
 
 class FirestoreService {
@@ -11,6 +11,16 @@ class FirestoreService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   String? get _userId => _auth.currentUser?.uid;
+
+  // [BARU] Stream untuk memantau keberadaan dokumen pengguna secara real-time.
+  // Ini adalah kunci untuk memastikan data pengguna sudah siap sebelum UI ditampilkan.
+  Stream<DocumentSnapshot> get userDocumentStream {
+    if (_userId == null) {
+      // Jika tidak ada user ID, kembalikan stream kosong untuk menghindari error.
+      return Stream.empty();
+    }
+    return _db.collection('users').doc(_userId).snapshots();
+  }
 
    Future<void> updateUserData(Map<String, dynamic> data) async {
     if (_userId == null) return;
@@ -27,15 +37,14 @@ class FirestoreService {
     if (!doc.exists) {
       await userRef.set({
         'email': user.email ?? '',
-        'displayName': user.displayName ?? '',
+        'displayName': user.displayName ?? user.email?.split('@').first ?? 'User',
         'createdAt': FieldValue.serverTimestamp(),
       });
+      // Fungsi ini akan dipanggil hanya satu kali saat dokumen user dibuat.
       await createDefaultWallets();
     }
   }
-
-  // [PERBAIKAN UTAMA] Logika ini sekarang menghapus semua data pengguna di Firestore,
-  // termasuk semua dompet dan transaksi yang tersimpan di dalam sub-koleksi.
+  
   Future<void> deleteUserData() async {
     final user = _auth.currentUser;
     if (user == null) {
@@ -43,42 +52,34 @@ class FirestoreService {
     }
 
     final userDocRef = _db.collection('users').doc(user.uid);
-
-    // 1. Hapus sub-koleksi 'transactions'
-    final transactionsRef = userDocRef.collection('transactions');
-    await _deleteCollection(transactionsRef);
-
-    // 2. Hapus sub-koleksi 'wallets'
-    final walletsRef = userDocRef.collection('wallets');
-    await _deleteCollection(walletsRef);
-
-    // 3. Terakhir, hapus dokumen utama pengguna itu sendiri
+    
+    // Hapus sub-koleksi 'transactions' dan 'wallets' secara rekursif
+    await _deleteCollection(userDocRef.collection('transactions'));
+    await _deleteCollection(userDocRef.collection('wallets'));
+    
+    // Hapus dokumen utama pengguna
     await userDocRef.delete();
   }
 
-  // [BARU] Helper untuk menghapus semua dokumen dalam sebuah koleksi secara batch.
-  // Firestore tidak dapat menghapus koleksi secara langsung dari sisi klien,
-  // jadi kita harus menghapus setiap dokumen di dalamnya satu per satu.
   Future<void> _deleteCollection(CollectionReference collectionRef) async {
-    // Ambil semua dokumen dalam koleksi
-    final querySnapshot = await collectionRef.get();
+    final querySnapshot = await collectionRef.limit(500).get();
 
-    // Jika koleksi sudah kosong, tidak ada yang perlu dilakukan
     if (querySnapshot.docs.isEmpty) {
       return;
     }
 
-    // Buat batch write untuk efisiensi
     final batch = _db.batch();
     for (final doc in querySnapshot.docs) {
       batch.delete(doc.reference);
     }
-
-    // Lakukan semua operasi hapus dalam satu panggilan ke server
     await batch.commit();
+
+    // Jika dokumen lebih dari 500, panggil fungsi ini lagi (rekursif)
+    if (querySnapshot.size >= 500) {
+      await _deleteCollection(collectionRef);
+    }
   }
 
-  
   Future<void> createDefaultWallets() async {
     if (_userId == null) return;
     final walletsRef = _db.collection('users').doc(_userId).collection('wallets');
@@ -88,9 +89,9 @@ class FirestoreService {
     WriteBatch batch = _db.batch();
     
     final List<Map<String, dynamic>> defaultWalletsData = [
-      {'walletName': 'Cash', 'category': 'Uang Jajan', 'location': 'Cash'},
-      {'walletName': 'Gopay', 'category': 'Uang Jajan', 'location': 'Qris'},
-      {'walletName': 'Bank Indonesia', 'category': 'Investasi', 'location': 'Bank'}
+      {'walletName': 'Dompet Tunai', 'category': 'Uang Fisik', 'location': 'Cash'},
+      {'walletName': 'GoPay', 'category': 'E-Wallet', 'location': 'Qris'},
+      {'walletName': 'Rekening Bank', 'category': 'Tabungan', 'location': 'Bank'}
     ];
 
     for (var walletData in defaultWalletsData) {
@@ -106,6 +107,9 @@ class FirestoreService {
     }
     await batch.commit();
   }
+
+  // --- Sisa fungsi (addWallet, deleteWallet, getWallets, dll.) tidak perlu diubah ---
+  // --- Biarkan seperti semula ---
 
   Future<void> addWallet({
     required String name,

@@ -14,14 +14,6 @@
       },
       "oauth_client": [
         {
-          "client_id": "412881082749-dlrq3e9slh4caafqhn0fi1s1ghnv16s0.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.lino.budgetin_id",
-            "certificate_hash": "85f4875db8bdf30fc7f7368bb52f82aadf2a349b"
-          }
-        },
-        {
           "client_id": "412881082749-i4d9omam6sn1seel063l8vbs8aora5qn.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
