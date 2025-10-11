@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "412881082749-i4d9omam6sn1seel063l8vbs8aora5qn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.lino.budgetin_id",
+            "certificate_hash": "3256a41f021562f4b359b456f976bb688a2f604c"
+          }
+        },
+        {
           "client_id": "412881082749-fr6gidl0m2gbo5er3bpkptfvqn79h1b8.apps.googleusercontent.com",
           "client_type": 3
         }

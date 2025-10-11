@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@google/genai": "^1.23.0",
     "firebase": "^12.2.1"
   }
 }
