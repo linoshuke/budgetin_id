@@ -28,7 +28,7 @@ class AccountPage extends StatelessWidget {
 
         final user = snapshot.data;
 
-        if (user != null && !user.isAnonymous) {
+        if (user != null) {
           return Padding(
             padding: const EdgeInsets.only(right: 12.0),
             child: GestureDetector(
@@ -78,11 +78,16 @@ class SettingsPage extends StatelessWidget {
         body: Consumer<SettingsProvider>(
           builder: (context, provider, child) {
             final user = provider.user;
+            // [LOGIKA DIPERBARUI] Logika pop otomatis ini tetap dipertahankan sebagai fallback
+            // jika pengguna logout dari tempat lain, tapi alur hapus akun akan ditangani secara eksplisit.
             if (user == null) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if(Navigator.canPop(context)) Navigator.pop(context);
+                if(Navigator.canPop(context)) {
+                  Navigator.of(context).pop();
+                }
               });
-              return const Center(child: Text("Anda telah logout."));
+              // Tampilkan loading indicator singkat saat proses pop
+              return const Center(child: CircularProgressIndicator());
             }
 
             return ListView(
@@ -104,9 +109,8 @@ class SettingsPage extends StatelessWidget {
   }
 
   Widget _buildProfileSection(BuildContext context, SettingsProvider provider) {
-    // ... (kode ini tidak berubah)
     final user = provider.user!;
-    final displayName = provider.isAnonymous ? "Pengguna Tamu" : (user.displayName ?? 'Tanpa Nama');
+    final displayName = user.displayName ?? 'Tanpa Nama';
     
     return Column(
       children: [
@@ -119,12 +123,12 @@ class SettingsPage extends StatelessWidget {
               backgroundImage: user.photoURL != null ? NetworkImage(user.photoURL!) : null,
               child: user.photoURL == null ? Icon(Icons.person, size: 50, color: Colors.grey.shade400) : null,
             ),
-            if(!provider.isAnonymous)
             SizedBox(
               height: 36,
               width: 36,
               child: FittedBox(
                 child: FloatingActionButton(
+                  heroTag: 'profile_picture_fab',
                   onPressed: provider.isLoading ? null : () => provider.pickAndUploadProfileImage(),
                   tooltip: 'Ubah Foto Profil',
                   elevation: 1,
@@ -136,26 +140,21 @@ class SettingsPage extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(displayName, style: Theme.of(context).textTheme.headlineSmall),
-        if (!provider.isAnonymous)
-          Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: Text(user.email ?? 'Email tidak tersedia'),
-          ),
+        Padding(
+          padding: const EdgeInsets.only(top: 4.0),
+          child: Text(user.email ?? 'Email tidak tersedia'),
+        ),
         
-        if (!provider.isAnonymous)
-          TextButton.icon(
-            icon: const Icon(Icons.edit, size: 16),
-            label: const Text('Ubah Nama'),
-            onPressed: () => _showEditNameDialog(context, provider),
-          ),
+        TextButton.icon(
+          icon: const Icon(Icons.edit, size: 16),
+          label: const Text('Ubah Nama'),
+          onPressed: () => _showEditNameDialog(context, provider),
+        ),
       ],
     );
   }
 
   Widget _buildAccountManagementSection(BuildContext context, SettingsProvider provider) {
-    // ... (kode ini tidak berubah)
-    if (provider.isAnonymous) return const SizedBox.shrink();
-    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -183,8 +182,8 @@ class SettingsPage extends StatelessWidget {
         if (!provider.hasPasswordProvider)
           ListTile(
             leading: const Icon(Icons.password_outlined),
-            title: const Text('Tambahkan Login dengan Password'),
-            subtitle: Text('Buat password untuk email ${provider.user?.email ?? ""}'),
+            title: const Text('Tambahkan Password'),
+            subtitle: Text(' untuk email ${provider.user?.email ?? ""}'),
             onTap: () => _showAddPasswordDialog(context, provider),
           ),
 
@@ -200,9 +199,6 @@ class SettingsPage extends StatelessWidget {
   }
 
   Widget _buildDangerZone(BuildContext context, SettingsProvider provider) {
-    // ... (kode ini tidak berubah)
-    if (provider.isAnonymous) return const SizedBox.shrink();
-    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -222,12 +218,13 @@ class SettingsPage extends StatelessWidget {
   }
 
   void _showDeleteAccountDialog(BuildContext pageContext) {
-    // ... (kode ini tidak berubah)
+    final provider = pageContext.read<SettingsProvider>();
     final confirmationController = TextEditingController();
     final passwordController = TextEditingController();
     const String confirmationPhrase = "hapus akun saya";
-    final provider = pageContext.read<SettingsProvider>();
-    final isPasswordProvider = provider.user?.providerData.any((p) => p.providerId == 'password') ?? false;
+    final bool needsPassword = provider.hasPasswordProvider;
+    final bool needsConfirmationPhrase = !provider.hasPasswordProvider && provider.hasGoogleProvider;
+    bool isPasswordVisible = false;
 
     showDialog<void>(
       context: pageContext,
@@ -236,11 +233,14 @@ class SettingsPage extends StatelessWidget {
         value: provider,
         child: StatefulBuilder(
           builder: (dialogContext, setDialogState) {
-            bool isPasswordVisible = false;
             final isProviderLoading = dialogContext.watch<SettingsProvider>().isLoading;
-            final isConfirmationValid = confirmationController.text == confirmationPhrase;
-            final isPasswordEntered = !isPasswordProvider || passwordController.text.isNotEmpty;
-            final canDelete = isConfirmationValid && isPasswordEntered && !isProviderLoading;
+            
+            bool canDelete = false;
+            if (needsPassword) {
+              canDelete = passwordController.text.isNotEmpty && !isProviderLoading;
+            } else if (needsConfirmationPhrase) {
+              canDelete = confirmationController.text == confirmationPhrase && !isProviderLoading;
+            }
 
             return AlertDialog(
               title: const Text('Hapus Akun Permanen?'),
@@ -249,35 +249,19 @@ class SettingsPage extends StatelessWidget {
                   children: <Widget>[
                     const Text('Tindakan ini akan menghapus semua data Anda secara permanen.'),
                     const SizedBox(height: 16),
-                    const Text('Ketik frasa berikut untuk konfirmasi:'),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(8)),
-                      child: const Center(child: Text(confirmationPhrase, style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'monospace'))),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: confirmationController,
-                      autofocus: true,
-                      decoration: const InputDecoration(labelText: 'Ketik konfirmasi di sini'),
-                      onChanged: (value) => setDialogState(() {}),
-                    ),
-                    if (isPasswordProvider) ...[
-                      const SizedBox(height: 16),
-                      Text('Untuk keamanan, masukkan kembali password Anda:', style: Theme.of(dialogContext).textTheme.bodyMedium),
+                    if (needsPassword) ...[
+                      Text('Untuk keamanan, masukkan password Anda:', style: Theme.of(dialogContext).textTheme.bodyMedium),
                       const SizedBox(height: 8),
                       TextField(
                         controller: passwordController,
                         obscureText: !isPasswordVisible,
+                        autofocus: true,
                         decoration: InputDecoration(
                           labelText: 'Password',
                           suffixIcon: IconButton(
                             icon: Icon(isPasswordVisible ? Icons.visibility : Icons.visibility_off),
                             onPressed: () {
-                              setDialogState(() {
-                                isPasswordVisible = !isPasswordVisible;
-                              });
+                              setDialogState(() => isPasswordVisible = !isPasswordVisible);
                             },
                           )
                         ),
@@ -286,8 +270,8 @@ class SettingsPage extends StatelessWidget {
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          // [PERBAIKAN] Warning 'BuildContext' diperbaiki di sini
                           onPressed: () async {
+                            Navigator.of(dialogContext).pop();
                             final messenger = ScaffoldMessenger.of(pageContext);
                             final theme = Theme.of(pageContext);
                             try {
@@ -302,10 +286,23 @@ class SettingsPage extends StatelessWidget {
                           child: const Text('Lupa Password?'),
                         ),
                       ),
-                    ],
-                     if (!isPasswordProvider) ...[
+                    ] else if (needsConfirmationPhrase) ...[
+                      const Text('Ketik frasa berikut untuk konfirmasi:'),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(8)),
+                        child: const Center(child: Text(confirmationPhrase, style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'monospace'))),
+                      ),
                       const SizedBox(height: 16),
-                      Text('Anda akan diminta untuk login ulang dengan Google untuk melanjutkan.', style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic)),
+                      TextField(
+                        controller: confirmationController,
+                        autofocus: true,
+                        decoration: const InputDecoration(labelText: 'Ketik konfirmasi di sini'),
+                        onChanged: (value) => setDialogState(() {}),
+                      ),
+                       const SizedBox(height: 16),
+                      Text('Anda mungkin akan diminta untuk login ulang dengan Google untuk melanjutkan.', style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic)),
                     ]
                   ],
                 ),
@@ -320,30 +317,51 @@ class SettingsPage extends StatelessWidget {
                     backgroundColor: canDelete ? Theme.of(dialogContext).colorScheme.errorContainer : Colors.grey.shade300,
                     foregroundColor: canDelete ? Theme.of(dialogContext).colorScheme.onErrorContainer : Colors.grey.shade600,
                   ),
+                  // [PERBAIKAN LOGIKA NAVIGASI]
                   onPressed: canDelete ? () async {
                     final messenger = ScaffoldMessenger.of(pageContext);
-                    Navigator.of(dialogContext).pop(); 
+                    // Ambil navigator dari `pageContext` (yang merupakan `SettingsPage`)
+                    // SEBELUM melakukan operasi async.
+                    final mainPageNavigator = Navigator.of(pageContext);
+                    // Ambil juga navigator dialog untuk ditutup saat gagal
+                    final dialogNavigator = Navigator.of(dialogContext);
 
                     try {
                       await provider.deleteAccountWithVerification(password: passwordController.text);
-                    } catch (e) {
-                      if (!pageContext.mounted) return;
-                      String errorMessage = 'Terjadi kesalahan.';
-                      if (e is FirebaseAuthException) {
-                         if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
-                          errorMessage = 'Password yang Anda masukkan salah.';
-                        } else if(e.code == 'requires-recent-login'){
-                          errorMessage = 'Login ulang diperlukan. Silakan logout dan login kembali untuk melanjutkan.';
-                        } else {
-                          errorMessage = 'Gagal menghapus akun: ${e.message}';
-                        }
+                      
+                      // Jika berhasil, panggil pop() pada navigator SettingsPage
+                      // Ini akan menutup SettingsPage dan membawa pengguna kembali ke HomePage.
+                      if (pageContext.mounted) {
+                        mainPageNavigator.pop();
+                        messenger.showSnackBar(
+                           const SnackBar(
+                            content: Text("Akun Anda telah berhasil dihapus."),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
                       }
-                      messenger.showSnackBar(
-                        SnackBar(
-                          content: Text(errorMessage),
-                          backgroundColor: Theme.of(pageContext).colorScheme.error,
-                        ),
-                      );
+                    } catch (e) {
+                      // Jika gagal, cukup tutup dialog dan tampilkan error
+                      // di SettingsPage agar pengguna bisa mencoba lagi.
+                      if (pageContext.mounted) {
+                        dialogNavigator.pop();
+                        String errorMessage = 'Terjadi kesalahan.';
+                        if (e is FirebaseAuthException) {
+                          if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+                            errorMessage = 'Password yang Anda masukkan salah.';
+                          } else if(e.code == 'requires-recent-login'){
+                            errorMessage = 'Login ulang diperlukan. Silakan logout dan login kembali untuk melanjutkan.';
+                          } else {
+                            errorMessage = 'Gagal menghapus akun: ${e.message}';
+                          }
+                        }
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text(errorMessage),
+                            backgroundColor: Theme.of(pageContext).colorScheme.error,
+                          ),
+                        );
+                      }
                     }
                   } : null,
                   child: isProviderLoading
@@ -358,8 +376,8 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
+
   void _showEditNameDialog(BuildContext context, SettingsProvider provider) {
-    // ... (kode ini tidak berubah)
     final nameController = TextEditingController(text: provider.user?.displayName);
     showDialog(
       context: context,
@@ -387,68 +405,87 @@ class SettingsPage extends StatelessWidget {
   }
 
   void _showAddPasswordDialog(BuildContext context, SettingsProvider provider) {
-    // ... (kode ini tidak berubah)
     final passwordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    bool isPasswordVisible = false;
+    bool isConfirmPasswordVisible = false;
 
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Buat Password Baru'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password Baru'),
-                validator: (value) {
-                  if (value == null || value.length < 6) {
-                    return 'Password minimal 6 karakter';
-                  }
-                  return null;
-                },
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Buat Password Baru'),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: passwordController,
+                      obscureText: !isPasswordVisible,
+                      decoration: InputDecoration(
+                        labelText: 'Password Baru',
+                        suffixIcon: IconButton(
+                          icon: Icon(isPasswordVisible ? Icons.visibility : Icons.visibility_off),
+                          onPressed: () => setDialogState(() => isPasswordVisible = !isPasswordVisible),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.length < 6) {
+                          return 'Password minimal 6 karakter';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: confirmPasswordController,
+                      obscureText: !isConfirmPasswordVisible,
+                       decoration: InputDecoration(
+                        labelText: 'Konfirmasi Password',
+                        suffixIcon: IconButton(
+                          icon: Icon(isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off),
+                          onPressed: () => setDialogState(() => isConfirmPasswordVisible = !isConfirmPasswordVisible),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value != passwordController.text) {
+                          return 'Password tidak cocok';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: confirmPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Konfirmasi Password'),
-                validator: (value) {
-                  if (value != passwordController.text) {
-                    return 'Password tidak cocok';
-                  }
-                  return null;
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Batal')),
-          FilledButton(
-            onPressed: () async {
-              if (formKey.currentState!.validate()) {
-                final messenger = ScaffoldMessenger.of(context);
-                final theme = Theme.of(context);
-                Navigator.pop(dialogContext);
-                try {
-                  await provider.addPasswordToAccount(passwordController.text);
-                  if (!context.mounted) return;
-                  messenger.showSnackBar(const SnackBar(content: Text('Password berhasil ditambahkan!'), backgroundColor: Colors.green,));
-                } catch (e) {
-                  if (!context.mounted) return;
-                  messenger.showSnackBar(SnackBar(content: Text('Gagal: ${e.toString()}'), backgroundColor: theme.colorScheme.error,));
-                }
-              }
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Batal')),
+                FilledButton(
+                  onPressed: () async {
+                    if (formKey.currentState!.validate()) {
+                      final messenger = ScaffoldMessenger.of(context);
+                      final theme = Theme.of(context);
+                      Navigator.pop(dialogContext);
+                      try {
+                        await provider.addPasswordToAccount(passwordController.text);
+                        if (!context.mounted) return;
+                        messenger.showSnackBar(const SnackBar(content: Text('Password berhasil ditambahkan!'), backgroundColor: Colors.green,));
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        messenger.showSnackBar(SnackBar(content: Text('Gagal: ${e.toString()}'), backgroundColor: theme.colorScheme.error,));
+                      }
+                    }
+                  },
+                  child: const Text('Simpan'),
+                ),
+              ],
+            );
+          }
+        );
+      }
     );
   }
 }

@@ -23,6 +23,12 @@ class RequiresRecentLoginException implements Exception {
   RequiresRecentLoginException();
 }
 
+class GoogleSignUpNotAllowedException implements Exception {
+  final String message;
+  GoogleSignUpNotAllowedException(this.message);
+}
+
+
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
@@ -45,12 +51,6 @@ class AuthService {
       throw UsageLimitExceededException('Anda telah mencapai batas maksimal login. Coba lagi dalam 24 jam.');
     }
     try {
-      final signInMethods = await _auth.fetchSignInMethodsForEmail(email);
-      if (signInMethods.isNotEmpty && !signInMethods.contains('password')) {
-        throw AccountExistsWithDifferentCredentialException(email, signInMethods);
-      }
-      
-      // [LOGIC DISEDERHANAKAN] Tidak ada lagi pengecekan user anonim.
       final userCredential = await _auth.signInWithEmailAndPassword(email: email, password: password);
       await _usageLimiter.recordAction(LimitedAction.loginOrSignup);
       return userCredential.user;
@@ -59,8 +59,6 @@ class AuthService {
     }
   }
 
-  // [REVISI LOGIC] Menghapus logika "Account Linking" dari anonim.
-  // Fungsi ini sekarang murni membuat akun baru.
   Future<User?> signUpWithEmailAndPassword(
     String email,
     String password,
@@ -70,13 +68,11 @@ class AuthService {
       throw UsageLimitExceededException('Anda telah mencapai batas maksimal registrasi. Coba lagi dalam 24 jam.');
     }
     try {
-      // Selalu buat pengguna baru karena tidak ada lagi sesi tamu untuk di-upgrade.
       final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(email: email, password: password);
       
       final user = userCredential.user;
       if (user != null) {
         await user.updateDisplayName(displayName);
-        // Inisialisasi data pengguna saat pertama kali dibuat.
         await _firestoreService.initializeUserData(user, displayName: displayName);
 
         try {
@@ -96,8 +92,6 @@ class AuthService {
     }
   }
 
-  // [REVISI LOGIC] Menghapus logika "Account Linking" dari anonim.
-  // Fungsi ini sekarang murni untuk sign-in atau sign-up via Google.
   Future<User?> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -109,12 +103,19 @@ class AuthService {
         idToken: googleAuth.idToken,
       );
 
-      // Selalu sign-in dengan kredensial. Jika user belum ada, Firebase akan membuatnya.
       final userCredential = await _auth.signInWithCredential(credential);
-      
       final user = userCredential.user;
+      
+      if (user != null && userCredential.additionalUserInfo?.isNewUser == true) {
+        await user.delete();
+        await _googleSignIn.signOut();
+        await _auth.signOut();
+        throw GoogleSignUpNotAllowedException(
+          'Akun Google ini belum terdaftar. Silakan daftar terlebih dahulu.'
+        );
+      }
+      
       if (user != null) {
-        // Panggil inisialisasi. Fungsi ini aman karena tidak akan menimpa data yang ada.
         await _firestoreService.initializeUserData(user, displayName: user.displayName);
       }
       return user;
@@ -123,16 +124,38 @@ class AuthService {
       if (e.code == 'account-exists-with-different-credential') {
         final email = e.email;
         if (email != null && e.credential != null) {
-          final signInMethods = await _auth.fetchSignInMethodsForEmail(email);
-          if (signInMethods.contains('password')) {
             throw PasswordVerificationRequiredException(e.credential!, email);
-          }
         }
       }
       debugPrint("Error saat login dengan Google: $e");
       rethrow;
     }
   }
+
+  Future<User?> signUpWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return null;
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential = await _auth.signInWithCredential(credential);
+      final user = userCredential.user;
+      
+      if (user != null) {
+        await _firestoreService.initializeUserData(user, displayName: user.displayName);
+      }
+      return user;
+
+    } on FirebaseAuthException {
+      rethrow;
+    }
+  }
+
 
   Future<User?> linkGoogleAfterPasswordVerification(String email, String password, AuthCredential googleCredential) async {
     try {
@@ -159,13 +182,25 @@ class AuthService {
     }
   }
 
+  // [PERBAIKAN BUG]
   Future<void> deleteUserAccount() async {
     final user = currentUser;
     if (user == null) throw Exception("Tidak ada pengguna yang login untuk dihapus.");
+    
+    // Periksa apakah pengguna login dengan Google SEBELUM dihapus
+    final isGoogleProvider = user.providerData.any((p) => p.providerId == 'google.com');
 
     try {
       await _firestoreService.deleteUserData();
       await user.delete();
+
+      // [FIX] Jika pengguna yang dihapus login via Google, putuskan koneksi sepenuhnya.
+      // Ini akan membersihkan cache di `google_sign_in` dan memaksa
+      // dialog pilihan akun muncul lagi pada login berikutnya.
+      if (isGoogleProvider) {
+        await _googleSignIn.disconnect();
+      }
+      
     } on FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {
         throw RequiresRecentLoginException();
@@ -174,9 +209,10 @@ class AuthService {
     }
   }
 
-  // [REVISI LOGIC] Menghapus signInAnonymously() setelah logout.
   Future<void> signOut() async {
     try {
+      // signOut() sudah cukup untuk logout biasa, disconnect() tidak diperlukan di sini
+      // agar pengguna tidak perlu re-authorize setiap kali logout.
       await _googleSignIn.signOut();
       await _auth.signOut();
     } catch (e) {
@@ -184,8 +220,6 @@ class AuthService {
     }
   }
   
-  // Sisa fungsi (linkWithGoogle, addPasswordToAccount, reauthenticate) tidak berubah
-  // karena fungsinya untuk manajemen akun yang sudah login, bukan untuk alur awal.
   Future<void> linkWithGoogle() async {
     if (currentUser == null) throw Exception("User not logged in.");
 

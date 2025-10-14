@@ -1,10 +1,11 @@
 // lib/pages/auth/signup_screen.dart
+import 'package:budgetin_id/pages/home_screen.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:budgetin_id/pages/auth/service/email_verification.dart'; 
+import 'package:budgetin_id/pages/auth/service/email_verification.dart'; // Pastikan import ini ada
 import 'package:budgetin_id/pages/auth/service/auth_service.dart';
-import 'package:budgetin_id/pages/usageservice.dart'; 
+import 'package:budgetin_id/pages/usageservice.dart';
 import 'package:budgetin_id/pages/webviewscreen.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -75,6 +76,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
+  // [PERBAIKAN BUG NAVIGASI]
   Future<void> _handleSignUp() async {
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
@@ -89,7 +91,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         username,
       );
       if (mounted && user != null) {
-        _navigateToVerification();
+        // [FIX] Mengembalikan navigasi menggunakan MaterialPageRoute
+        // untuk menghindari error "route not found".
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const EmailVerificationScreen()),
+          (route) => false,
+        );
       }
     } on FirebaseAuthException catch (e) {
       String message;
@@ -102,9 +109,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
           break;
         case 'invalid-email':
           message = 'Format email tidak valid.';
-          break;
-        case 'too-many-requests':
-          message = 'Terlalu banyak percobaan. Silakan coba lagi nanti.';
           break;
         default:
           message = 'Registrasi gagal: ${e.message}';
@@ -122,38 +126,30 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Future<void> _handleGoogleSignUp() async {
     _setLoading(true);
     try {
-      final user = await _authService.signInWithGoogle();
+      final user = await _authService.signUpWithGoogle();
       if (user != null && mounted) {
-        // Jika email sudah terdaftar via email, Firebase akan otomatis merge jika provider diizinkan
-        // Tapi jika email sudah ada dengan provider berbeda tanpa linking, Firebase lempar error
-        // → Kita tangani di UI lewat pesan error (FirebaseException: account-exists-with-different-credential)
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const EmailVerificationScreen()),
+          MaterialPageRoute(builder: (context) => const HomePage()),
           (route) => false,
         );
       }
-    } catch (e) {
+    } on FirebaseAuthException catch (e) {
       if (mounted) {
-        if (e is FirebaseAuthException && e.code == 'account-exists-with-different-credential') {
-          // Kasus: email sudah terdaftar via email, tapi user coba daftar via Google
+        if (e.code == 'account-exists-with-different-credential') {
           _showErrorSnackBar(
-            'Email ini sudah terdaftar dengan metode lain. Silakan login terlebih dahulu, lalu kaitkan akun Google Anda.',
+            'Email ini sudah terdaftar dengan password. Silakan masuk, lalu tautkan akun Google Anda di profil.',
           );
-        } else if (e is! Exception || !e.toString().contains('dibatalkan')) {
-          _showErrorSnackBar('Pendaftaran dengan Google gagal.');
+        } else {
+          _showErrorSnackBar('Pendaftaran dengan Google gagal: ${e.message}');
         }
+      }
+    } catch (e) {
+      if (e is! Exception || !e.toString().toLowerCase().contains('canceled')) {
+         if(mounted) _showErrorSnackBar('Pendaftaran dengan Google gagal.');
       }
     } finally {
       _setLoading(false);
     }
-  }
-
-  void _navigateToVerification() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => const EmailVerificationScreen(),
-      ),
-    );
   }
 
   void _showErrorSnackBar(String message, {bool isWarning = false}) {
@@ -177,6 +173,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: BackButton(color: Theme.of(context).colorScheme.onSurface),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -334,7 +331,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   height: 22.0,
                 ),
                 label: const Text('Daftar dengan Google'),
-                onPressed: _handleGoogleSignUp,
+                onPressed: _isLoading ? null : _handleGoogleSignUp,
               ),
               const SizedBox(height: 24),
               Row(
@@ -345,7 +342,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     onPressed: _isLoading
                         ? null
                         : () => Navigator.of(context).pop(),
-                    child: const Text('masuk di sini'),
+                    child: const Text('Masuk di sini'),
                   ),
                 ],
               ),

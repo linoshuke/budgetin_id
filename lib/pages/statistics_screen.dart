@@ -1,5 +1,5 @@
 // lib/pages/statistics_page.dart
-import 'package:budgetin_id/pages/account_page.dart';
+import 'package:budgetin_id/pages/account_screen.dart';
 import 'package:budgetin_id/pages/auth/service/auth_service.dart';
 import 'package:budgetin_id/pages/auth/service/lock.dart';
 import 'package:firebase_auth/firebase_auth.dart';

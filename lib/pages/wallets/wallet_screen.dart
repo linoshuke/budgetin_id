@@ -1,6 +1,6 @@
 // lib/pages/wallets/wallet_screen.dart
 
-import 'package:budgetin_id/pages/account_page.dart';
+import 'package:budgetin_id/pages/account_screen.dart';
 import 'package:budgetin_id/pages/auth/service/auth_service.dart';
 import 'package:budgetin_id/pages/auth/service/lock.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -13,16 +13,13 @@ import 'widgets/card_wallet.dart';
 class WalletsScreen extends StatelessWidget {
   const WalletsScreen({super.key});
 
-  // Dialog _showAddWalletDialog tetap sama, tidak perlu diubah.
   void _showAddWalletDialog(BuildContext context) {
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
     
-    // Variabel untuk menampung nilai dari dropdown
     String? selectedCategory;
     String? selectedLocation;
 
-    // Opsi default untuk dropdown
     final List<String> categories = ['Dana Pensiun', 'Uang Jajan', 'Investasi', 'Bisnis'];
     final List<String> locations = ['Bank', 'Kartu Kredit', 'Cash'];
 
@@ -35,7 +32,7 @@ class WalletsScreen extends StatelessWidget {
               title: const Text("Tambah Dompet Baru"),
               content: Form(
                 key: formKey,
-                child: SingleChildScrollView( // Agar tidak overflow saat keyboard muncul
+                child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -109,19 +106,12 @@ class WalletsScreen extends StatelessWidget {
                 ElevatedButton(
                   onPressed: () {
                     if (formKey.currentState!.validate()) {
-                      context.read<FirestoreService>();
-                      
-                      if (formKey.currentState!.validate()) {
-                     final firestoreService = context.read<FirestoreService>();
-                        firestoreService.addWallet(
+                      final firestoreService = context.read<FirestoreService>();
+                      firestoreService.addWallet(
                         name: nameController.text.trim(),
-                        category: selectedCategory!, // Nilai dari dropdown
-                        location: selectedLocation!, // Nilai dari dropdown
-    );
-    
-    Navigator.of(context).pop();
-}
-                      
+                        category: selectedCategory!,
+                        location: selectedLocation!,
+                      );
                       Navigator.of(context).pop();
                     }
                   },
@@ -137,7 +127,6 @@ class WalletsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // [BARU] Gunakan StreamBuilder untuk memeriksa status login
     return StreamBuilder<User?>(
       stream: context.read<AuthService>().authStateChanges,
       builder: (context, authSnapshot) {
@@ -147,7 +136,6 @@ class WalletsScreen extends StatelessWidget {
 
         final bool isLoggedIn = authSnapshot.hasData && authSnapshot.data != null;
 
-        // Jika PENGGUNA SUDAH LOGIN
         if (isLoggedIn) {
           final firestoreService = context.watch<FirestoreService>();
           return Scaffold(
@@ -193,14 +181,15 @@ class WalletsScreen extends StatelessWidget {
               },
             ),
             floatingActionButton: FloatingActionButton(
+              // [FIX] Menambahkan heroTag unik untuk membatalkan animasi yang tidak diinginkan.
+              heroTag: 'add_wallet_fab',
               onPressed: () => _showAddWalletDialog(context),
-              tooltip: 'Tambah Wallet',
+              tooltip: 'Tambah Dompet',
               child: const Icon(Icons.add),
             ),
           );
         } 
         
-        // Jika PENGGUNA BELUM LOGIN
         else {
           return Scaffold(
             appBar: AppBar(

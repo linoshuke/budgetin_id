@@ -3,7 +3,7 @@ import 'package:budgetin_id/pages/auth/service/auth_service.dart';
 import 'package:budgetin_id/pages/auth/service/lock.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'account_page.dart';
+import 'account_screen.dart';
 import 'package:provider/provider.dart';
 
 class HistoryPage extends StatelessWidget {

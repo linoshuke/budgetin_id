@@ -7,7 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:budgetin_id/pages/auth/signup_screen.dart';
 import 'package:budgetin_id/pages/webviewscreen.dart';
 import 'package:budgetin_id/pages/usageservice.dart';
-import 'package:budgetin_id/pages/home_page.dart';
+import 'package:budgetin_id/pages/home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -31,7 +31,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void initState() {
-    // ... (initState tidak berubah)
     super.initState();
     _termsRecognizer = TapGestureRecognizer()
       ..onTap = () {
@@ -53,7 +52,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    // ... (dispose tidak berubah)
     _emailController.dispose();
     _passwordController.dispose();
     _termsRecognizer.dispose();
@@ -62,7 +60,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _openWebView(BuildContext context, String title, String url) {
-    // ... (kode ini tidak berubah)
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => WebViewScreen(title: title, url: url),
@@ -78,7 +75,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // [PERBAIKAN] Logika login email diperbarui sesuai rekomendasi keamanan Firebase
   Future<void> _handleEmailSignIn() async {
     if (!_formKey.currentState!.validate() || !mounted) return;
     _setLoading(true);
@@ -87,7 +83,6 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text.trim();
 
     try {
-      // Langsung coba login, tangani error secara spesifik
       await _authService.signInWithEmailAndPassword(email, password);
 
       if (mounted) {
@@ -99,13 +94,11 @@ class _LoginScreenState extends State<LoginScreen> {
     } on FirebaseAuthException catch (e) {
       String message;
       switch (e.code) {
-        // [FIX] 'invalid-credential' menangani email tidak ada & password salah
-        // Berikan pesan yang membimbing pengguna yang mungkin mendaftar via Google
         case 'invalid-credential':
         case 'user-not-found':
         case 'wrong-password':
           message =
-              'Email atau password salah. Jika Anda mendaftar via Google, silakan gunakan tombol "Masuk dengan Google".';
+              'Jika Anda mendaftar via Google, silakan gunakan tombol "Masuk dengan Google".';
           break;
         case 'invalid-email':
           message = 'Format email tidak valid.';
@@ -125,6 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // [LOGIC DIPERBARUI] Menangani exception baru untuk Google Sign In
   Future<void> _handleGoogleSignIn() async {
     _setLoading(true);
     try {
@@ -135,23 +129,19 @@ class _LoginScreenState extends State<LoginScreen> {
           (route) => false,
         );
       }
+    } on GoogleSignUpNotAllowedException catch (e) {
+      // Menangkap error spesifik jika akun belum terdaftar
+      _showErrorSnackBar(e.message);
     } on FirebaseAuthException catch (e) {
-      // Tangani error spesifik dari Firebase Auth
       if (e.code == 'account-exists-with-different-credential') {
         _showErrorSnackBar(
-          'Email ini sudah terdaftar dengan metode lain. Silakan login dengan email/password, lalu kaitkan akun Google Anda di halaman profil.',
+          'Email ini sudah terdaftar dengan metode lain.',
         );
-      } else if (e.code == 'operation-not-allowed') {
-        _showErrorSnackBar('Login dengan Google belum diaktifkan di backend.');
       } else {
         _showErrorSnackBar('Masuk dengan Google gagal: ${e.message}');
       }
     } catch (e) {
-      // Tangani error non-Firebase (misal: user cancel, network error, dll)
       if (mounted && e.toString().contains('PlatformException')) {
-        // Misal: user membatalkan pemilihan akun Google
-        debugPrint("Google Sign-In dibatalkan atau gagal: $e");
-        // Opsional: tidak tampilkan snackbar jika dibatalkan
         if (!e.toString().toLowerCase().contains('canceled') &&
             !e.toString().toLowerCase().contains('dibatalkan')) {
           _showErrorSnackBar('Terjadi kesalahan saat login dengan Google.');
@@ -164,7 +154,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  //  Fungsi ini sekarang menangani kasus 'user-not-found'
   void _handlePasswordReset({String? prefilledEmail}) {
     final emailResetController = TextEditingController(
       text: prefilledEmail ?? '',
@@ -199,19 +188,15 @@ class _LoginScreenState extends State<LoginScreen> {
           FilledButton(
             onPressed: () async {
               if (emailResetController.text.trim().isEmpty) return;
-
               final scaffoldMessenger = ScaffoldMessenger.of(context);
               final theme = Theme.of(context);
-              final navigator = Navigator.of(context); // Simpan navigator
-
+              Navigator.of(context);
               Navigator.of(dialogContext).pop();
               _setLoading(true);
-
               try {
                 await _authService.sendPasswordResetEmail(
                   emailResetController.text.trim(),
                 );
-
                 if (!mounted) return;
                 scaffoldMessenger.showSnackBar(
                   const SnackBar(
@@ -227,33 +212,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 if (e.code == 'invalid-email') {
                   message = "Format email yang Anda masukkan tidak valid.";
                 } else if (e.code == 'user-not-found') {
-                  showDialog(
-                    context: context,
-                    builder: (newDialogContext) => AlertDialog(
-                      title: const Text("Email Tidak Terdaftar"),
-                      content: const Text(
-                        "Email ini belum terdaftar. Apakah Anda ingin membuat akun baru?",
-                      ),
-                      actions: [
-                        TextButton(
-                          child: const Text("Batal"),
-                          onPressed: () => Navigator.of(newDialogContext).pop(),
-                        ),
-                        FilledButton(
-                          child: const Text("Daftar"),
-                          onPressed: () {
-                            Navigator.of(newDialogContext).pop();
-                            navigator.push(
-                              MaterialPageRoute(
-                                builder: (context) => const SignUpScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  );
-                  return; // Hentikan eksekusi agar tidak menampilkan snackbar error
+                   // Logika ini sudah benar, tidak perlu diubah.
+                   // Jika user tidak ditemukan, tawarkan untuk mendaftar.
+                  _showErrorSnackBar("Email tidak terdaftar. Silakan buat akun baru.");
+                  return;
                 }
                 scaffoldMessenger.showSnackBar(
                   SnackBar(
@@ -275,7 +237,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showErrorSnackBar(String message, {bool isWarning = false}) {
-    // ... (kode ini tidak berubah)
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -289,11 +250,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ... (Seluruh UI widget build tidak berubah)
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: BackButton(color: Theme.of(context).colorScheme.onSurface),
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -367,7 +332,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: _isLoading ? null : () => _handlePasswordReset(),
+                    onPressed: _isLoading ? null : () => _handlePasswordReset(prefilledEmail: _emailController.text),
                     child: const Text('Lupa Password?'),
                   ),
                 ),
