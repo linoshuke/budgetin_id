@@ -1,20 +1,20 @@
 // lib/pages/home_page.dart 
 
-import 'dart:async'; // Diperlukan untuk StreamSubscription
+import 'dart:async';
 import 'package:budgetin_id/pages/account_screen.dart';
 import 'package:budgetin_id/pages/more_screen.dart';
-import 'package:budgetin_id/services/firestore_service.dart'; // Pastikan path ini benar
+import 'package:budgetin_id/services/firestore_service.dart';
 import 'package:budgetin_id/pages/wallets/widgets/models/wallet_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Untuk format mata uang
-import 'package:provider/provider.dart'; // Untuk mengakses FirestoreService
-import 'auth/service/auth_service.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:fl_chart/fl_chart.dart'; 
 import 'history_screen.dart';
 import 'statistics_screen.dart';
 import '/pages/wallets/wallet_screen.dart';
 
-// HomePage tetap sama, tidak perlu diubah
+// ... (Widget HomePage & _HomePageState tidak berubah) ...
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -101,6 +101,7 @@ class _HomePageState extends State<HomePage> {
         ));
   }
 }
+
 
 class HomeContent extends StatefulWidget {
   const HomeContent({super.key});
@@ -213,15 +214,13 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  @override
+   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Beranda'),
         backgroundColor: Colors.white,
-        actions: const [
-          AccountPage(),
-        ],
+        actions: const [ AccountPage(), ],
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -233,9 +232,9 @@ class _HomeContentState extends State<HomeContent> {
               const SizedBox(height: 24),
               _buildTotalBalanceCard(),
               const SizedBox(height: 24),
-              _buildDailySummaryCard(),
+              _buildMonthlySummaryCard(), // [NAMA FUNGSI DIUBAH]
               const SizedBox(height: 24),
-              _buildMiniChart(),
+              _buildMonthlyStatChart(), // [NAMA FUNGSI DIUBAH]
               const SizedBox(height: 80),
             ],
           ),
@@ -245,22 +244,17 @@ class _HomeContentState extends State<HomeContent> {
   }
 
   Widget _buildGreeting() {
-    return StreamBuilder<User?>(
-      stream: AuthService().authStateChanges,
-      builder: (context, snapshot) {
-        final userName = snapshot.data?.displayName ?? 'Tamu';
-        return Text(
-          'Selamat Datang,\n$userName',
-          style: const TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.bold,
-          ),
-        );
-      },
+    final user = context.watch<User?>();
+    final userName = user?.displayName ?? 'Tamu';
+    return Text(
+      'Selamat Datang,\n$userName',
+      style: const TextStyle(
+        fontSize: 26,
+        fontWeight: FontWeight.bold,
+      ),
     );
   }
 
-  // [REVISI] Kartu total saldo sekarang memiliki indikator aksi yang jelas
   Widget _buildTotalBalanceCard() {
     final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     final String subtitle = _selectedWalletIds.isEmpty
@@ -269,12 +263,12 @@ class _HomeContentState extends State<HomeContent> {
 
     return Card(
       elevation: 2,
-      clipBehavior: Clip.antiAlias, // Penting agar InkWell tidak keluar dari border radius
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: _showWalletSelectionDialog,
         child: Container(
-          height: 180, // Beri tinggi tetap agar layout konsisten
+          height: 180,
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
           decoration: BoxDecoration(
@@ -303,18 +297,16 @@ class _HomeContentState extends State<HomeContent> {
                         letterSpacing: 1.2,
                       ),
                     ),
-              const Spacer(), // Pendorong ke bawah
-              
-              // [BARU] Indikator Aksi / Call-to-Action
+              const Spacer(),
               Align(
                 alignment: Alignment.center,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.15),
+                    color: Colors.black.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.touch_app_outlined, color: Colors.white70, size: 16),
@@ -334,24 +326,87 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  Widget _buildDailySummaryCard() {
+  // Widget _buildDailySummaryCard() {
+  //   final firestoreService = context.watch<FirestoreService>();
+  //   final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    
+  //   return Column(
+  //     crossAxisAlignment: CrossAxisAlignment.start,
+  //     children: [
+  //       const Text('Ringkasan Hari Ini', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+  //       const SizedBox(height: 12),
+  //       Card(
+  //         elevation: 1,
+  //         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  //         child: Padding(
+  //           padding: const EdgeInsets.symmetric(vertical: 16.0),
+  //           child: StreamBuilder<Map<String, double>>(
+  //             stream: firestoreService.getDailySummary(_selectedWalletIds),
+  //             builder: (context, snapshot) {
+  //               if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+  //                 return const Center(child: SizedBox(height: 78, child: CircularProgressIndicator()));
+  //               }
+  //               if (snapshot.hasError) {
+  //                 return const Center(child: Padding(padding: EdgeInsets.all(16.0), child: Text("Gagal memuat ringkasan.")));
+  //               }
+
+  //               final income = snapshot.data?['income'] ?? 0.0;
+  //               final expense = snapshot.data?['expense'] ?? 0.0;
+  //               final difference = snapshot.data?['difference'] ?? 0.0;
+
+  //               return Row(
+  //                 mainAxisAlignment: MainAxisAlignment.spaceAround,
+  //                 children: [
+  //                   _buildSummaryItem(Icons.arrow_downward, 'Masuk', currencyFormatter.format(income), Colors.green),
+  //                   _buildSummaryItem(Icons.arrow_upward, 'Keluar', currencyFormatter.format(expense), Colors.red),
+  //                   _buildSummaryItem(Icons.account_balance, 'Selisih', currencyFormatter.format(difference), Colors.blue),
+  //                 ],
+  //               );
+  //             },
+  //           ),
+  //         ),
+  //       ),
+  //     ],
+  //   );
+  // }
+   Widget _buildMonthlySummaryCard() {
+    final firestoreService = context.watch<FirestoreService>();
+    final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Ringkasan Hari Ini', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text('Ringkasan Bulan Ini', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), // Judul diubah
         const SizedBox(height: 12),
         Card(
           elevation: 1,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildSummaryItem(Icons.arrow_downward, 'Masuk', 'Rp 0', Colors.green),
-                _buildSummaryItem(Icons.arrow_upward, 'Keluar', 'Rp 0', Colors.red),
-                _buildSummaryItem(Icons.account_balance, 'Selisih', 'Rp 0', Colors.blue),
-              ],
+            child: StreamBuilder<Map<String, double>>(
+              // Memanggil metode BARU untuk data bulanan
+              stream: firestoreService.getMonthlySummary(_selectedWalletIds),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                  return const Center(child: SizedBox(height: 78, child: CircularProgressIndicator()));
+                }
+                if (snapshot.hasError) {
+                  return const Center(child: Padding(padding: EdgeInsets.all(16.0), child: Text("Gagal memuat ringkasan.")));
+                }
+
+                final income = snapshot.data?['income'] ?? 0.0;
+                final expense = snapshot.data?['expense'] ?? 0.0;
+                final difference = snapshot.data?['difference'] ?? 0.0;
+
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildSummaryItem(Icons.arrow_downward, 'Masuk', currencyFormatter.format(income), Colors.green),
+                    _buildSummaryItem(Icons.arrow_upward, 'Keluar', currencyFormatter.format(expense), Colors.red),
+                    _buildSummaryItem(Icons.account_balance, 'Selisih', currencyFormatter.format(difference), Colors.blue),
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -371,11 +426,19 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  Widget _buildMiniChart() {
+  // [PERUBAHAN UTAMA] Mengganti placeholder dengan Pie Chart dinamis
+   Widget _buildMonthlyStatChart() {
+    final firestoreService = context.watch<FirestoreService>();
+    final user = context.watch<User?>();
+
+    if (user == null) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Pengeluaran Bulan Ini', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text('Statistik Bulan Ini', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), // Judul diubah
         const SizedBox(height: 12),
         Card(
           elevation: 1,
@@ -384,11 +447,41 @@ class _HomeContentState extends State<HomeContent> {
             padding: const EdgeInsets.all(16),
             height: 200,
             width: double.infinity,
-            child: const Center(
-              child: Text(
-                'Placeholder Grafik Mini',
-                style: TextStyle(color: Colors.grey),
-              ),
+            child: StreamBuilder<Map<String, double>>(
+              stream: firestoreService.getMonthlyExpenseByCategory(_selectedWalletIds),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(child: Text('Belum ada data pengeluaran bulan ini.', style: TextStyle(color: Colors.grey)));
+                }
+
+                final data = snapshot.data!;
+                final totalExpense = data.values.fold(0.0, (sum, item) => sum + item);
+                int colorIndex = 0;
+                final List<Color> chartColors = [Colors.blue, Colors.red, Colors.green, Colors.orange, Colors.purple, Colors.teal];
+
+                // Pie chart tidak perlu diubah, sudah benar
+                return PieChart(
+                  PieChartData(
+                    startDegreeOffset: -90,
+                    sectionsSpace: 2,
+                    centerSpaceRadius: 40,
+                    sections: data.entries.map((entry) {
+                      final color = chartColors[colorIndex++ % chartColors.length];
+                      final percentage = (entry.value / totalExpense) * 100;
+                      return PieChartSectionData(
+                        color: color,
+                        value: entry.value,
+                        title: '${percentage.toStringAsFixed(1)}%',
+                        radius: 50,
+                        titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                      );
+                    }).toList(),
+                  ),
+                );
+              },
             ),
           ),
         ),

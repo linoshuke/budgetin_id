@@ -3,7 +3,7 @@ import 'package:budgetin_id/pages/home_screen.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:budgetin_id/pages/auth/service/email_verification.dart'; // Pastikan import ini ada
+import 'package:budgetin_id/pages/auth/service/email_verification.dart';
 import 'package:budgetin_id/pages/auth/service/auth_service.dart';
 import 'package:budgetin_id/pages/usageservice.dart';
 import 'package:budgetin_id/pages/webviewscreen.dart';
@@ -76,7 +76,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  // [PERBAIKAN BUG NAVIGASI]
   Future<void> _handleSignUp() async {
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
@@ -91,8 +90,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
         username,
       );
       if (mounted && user != null) {
-        // [FIX] Mengembalikan navigasi menggunakan MaterialPageRoute
-        // untuk menghindari error "route not found".
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const EmailVerificationScreen()),
           (route) => false,
@@ -123,6 +120,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
+  // [LOGIKA DIPERBAIKI]
   Future<void> _handleGoogleSignUp() async {
     _setLoading(true);
     try {
@@ -132,6 +130,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
           MaterialPageRoute(builder: (context) => const HomePage()),
           (route) => false,
         );
+      }
+    // [FIX] Tangani error jika akun Google sudah terdaftar
+    } on GoogleAccountAlreadyExistsException catch (e) {
+      if (mounted) {
+        _showErrorSnackBar(e.message);
       }
     } on FirebaseAuthException catch (e) {
       if (mounted) {

@@ -1,6 +1,6 @@
 // lib/pages/widgets/login_prompt_widget.dart
 
-import 'package:budgetin_id/pages/auth/login_screen.dart';
+import 'package:budgetin_id/pages/auth/service/screen/login_screen.dart';
 import 'package:flutter/material.dart';
 
 class LockWidget extends StatelessWidget {

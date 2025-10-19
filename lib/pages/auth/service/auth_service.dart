@@ -28,6 +28,12 @@ class GoogleSignUpNotAllowedException implements Exception {
   GoogleSignUpNotAllowedException(this.message);
 }
 
+// [BARU] Exception untuk menandakan akun Google sudah terdaftar
+class GoogleAccountAlreadyExistsException implements Exception {
+  final String message;
+  GoogleAccountAlreadyExistsException(this.message);
+}
+
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -132,6 +138,7 @@ class AuthService {
     }
   }
 
+  // [LOGIKA DIPERBAIKI]
   Future<User?> signUpWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -145,7 +152,20 @@ class AuthService {
 
       final userCredential = await _auth.signInWithCredential(credential);
       final user = userCredential.user;
+
+      // [FIX] Periksa apakah pengguna BUKAN pengguna baru.
+      // Jika false, berarti akun sudah ada, dan proses pendaftaran harus digagalkan.
+      if (user != null && userCredential.additionalUserInfo?.isNewUser == false) {
+        // Batalkan proses dengan sign out agar tidak terjadi login otomatis.
+        await _googleSignIn.signOut();
+        await _auth.signOut();
+        // Lemparkan error spesifik yang akan ditangani di UI.
+        throw GoogleAccountAlreadyExistsException(
+          'Akun Google ini sudah terdaftar. Silakan masuk melalui halaman login.'
+        );
+      }
       
+      // Jika pengguna adalah baru (isNewUser == true), lanjutkan inisialisasi data.
       if (user != null) {
         await _firestoreService.initializeUserData(user, displayName: user.displayName);
       }
@@ -182,21 +202,16 @@ class AuthService {
     }
   }
 
-  // [PERBAIKAN BUG]
   Future<void> deleteUserAccount() async {
     final user = currentUser;
     if (user == null) throw Exception("Tidak ada pengguna yang login untuk dihapus.");
     
-    // Periksa apakah pengguna login dengan Google SEBELUM dihapus
     final isGoogleProvider = user.providerData.any((p) => p.providerId == 'google.com');
 
     try {
       await _firestoreService.deleteUserData();
       await user.delete();
 
-      // [FIX] Jika pengguna yang dihapus login via Google, putuskan koneksi sepenuhnya.
-      // Ini akan membersihkan cache di `google_sign_in` dan memaksa
-      // dialog pilihan akun muncul lagi pada login berikutnya.
       if (isGoogleProvider) {
         await _googleSignIn.disconnect();
       }
@@ -211,8 +226,6 @@ class AuthService {
 
   Future<void> signOut() async {
     try {
-      // signOut() sudah cukup untuk logout biasa, disconnect() tidak diperlukan di sini
-      // agar pengguna tidak perlu re-authorize setiap kali logout.
       await _googleSignIn.signOut();
       await _auth.signOut();
     } catch (e) {

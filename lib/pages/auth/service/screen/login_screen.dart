@@ -4,7 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:budgetin_id/pages/auth/service/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:budgetin_id/pages/auth/signup_screen.dart';
+import 'package:budgetin_id/pages/auth/service/screen/signup_screen.dart';
 import 'package:budgetin_id/pages/webviewscreen.dart';
 import 'package:budgetin_id/pages/usageservice.dart';
 import 'package:budgetin_id/pages/home_screen.dart';

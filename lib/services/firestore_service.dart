@@ -12,11 +12,10 @@ class FirestoreService {
 
   String? get _userId => _auth.currentUser?.uid;
 
-  // [BARU] Stream untuk memantau keberadaan dokumen pengguna secara real-time.
-  // Ini adalah kunci untuk memastikan data pengguna sudah siap sebelum UI ditampilkan.
+  // ... (semua metode yang sudah ada biarkan seperti semula) ...
+
   Stream<DocumentSnapshot> get userDocumentStream {
     if (_userId == null) {
-      // Jika tidak ada user ID, kembalikan stream kosong untuk menghindari error.
       return Stream.empty();
     }
     return _db.collection('users').doc(_userId).snapshots();
@@ -25,11 +24,9 @@ class FirestoreService {
    Future<void> updateUserData(Map<String, dynamic> data) async {
     if (_userId == null) return;
     final userRef = _db.collection('users').doc(_userId);
-    // Gunakan merge: true untuk update field tanpa menimpa seluruh dokumen
     await userRef.set(data, SetOptions(merge: true));
   }
 
-  // --- Metode Inisialisasi User ---
   Future<void> initializeUserData(User user, {String? displayName}) async {
     final userRef = _db.collection('users').doc(user.uid);
     final doc = await userRef.get();
@@ -40,7 +37,6 @@ class FirestoreService {
         'displayName': user.displayName ?? user.email?.split('@').first ?? 'User',
         'createdAt': FieldValue.serverTimestamp(),
       });
-      // Fungsi ini akan dipanggil hanya satu kali saat dokumen user dibuat.
       await createDefaultWallets();
     }
   }
@@ -50,31 +46,22 @@ class FirestoreService {
     if (user == null) {
       throw Exception("User tidak login, tidak ada data yang bisa dihapus.");
     }
-
     final userDocRef = _db.collection('users').doc(user.uid);
-    
-    // Hapus sub-koleksi 'transactions' dan 'wallets' secara rekursif
     await _deleteCollection(userDocRef.collection('transactions'));
     await _deleteCollection(userDocRef.collection('wallets'));
-    
-    // Hapus dokumen utama pengguna
     await userDocRef.delete();
   }
 
   Future<void> _deleteCollection(CollectionReference collectionRef) async {
     final querySnapshot = await collectionRef.limit(500).get();
-
     if (querySnapshot.docs.isEmpty) {
       return;
     }
-
     final batch = _db.batch();
     for (final doc in querySnapshot.docs) {
       batch.delete(doc.reference);
     }
     await batch.commit();
-
-    // Jika dokumen lebih dari 500, panggil fungsi ini lagi (rekursif)
     if (querySnapshot.size >= 500) {
       await _deleteCollection(collectionRef);
     }
@@ -85,15 +72,12 @@ class FirestoreService {
     final walletsRef = _db.collection('users').doc(_userId).collection('wallets');
     final existingWallets = await walletsRef.limit(1).get();
     if (existingWallets.docs.isNotEmpty) return;
-
     WriteBatch batch = _db.batch();
-    
     final List<Map<String, dynamic>> defaultWalletsData = [
       {'walletName': 'Dompet Tunai', 'category': 'Uang Fisik', 'location': 'Cash'},
       {'walletName': 'GoPay', 'category': 'E-Wallet', 'location': 'Qris'},
       {'walletName': 'Rekening Bank', 'category': 'Tabungan', 'location': 'Bank'}
     ];
-
     for (var walletData in defaultWalletsData) {
       final newWalletRef = walletsRef.doc();
       batch.set(newWalletRef, {
@@ -108,11 +92,7 @@ class FirestoreService {
     await batch.commit();
   }
 
-  Future<void> addWallet({
-    required String name,
-    required String category,
-    required String location,
-  }) async {
+  Future<void> addWallet({ required String name, required String category, required String location, }) async {
     if (_userId == null) return;
     await _db.collection('users').doc(_userId).collection('wallets').add({
       'walletName': name,
@@ -126,13 +106,10 @@ class FirestoreService {
   
   Future<void> deleteWallet(String walletId) async {
     if (_userId == null) return;
-
     final walletRef = _db.collection('users').doc(_userId).collection('wallets').doc(walletId);
     final transactionsRef = _db.collection('users').doc(_userId).collection('transactions');
-
     WriteBatch batch = _db.batch();
     final transactionsToDelete = await transactionsRef.where('walletId', isEqualTo: walletId).get();
-
     for (final doc in transactionsToDelete.docs) {
       batch.delete(doc.reference);
     }
@@ -171,7 +148,6 @@ class FirestoreService {
     DateTime now = DateTime.now();
     DateTime start;
     DateTime end;
-
     if (preference == 'daily') {
       start = DateTime(now.year, now.month, now.day);
       end = DateTime(now.year, now.month, now.day, 23, 59, 59);
@@ -179,7 +155,6 @@ class FirestoreService {
       start = DateTime(now.year, now.month, 1);
       end = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
     }
-
     return _db.collection('users').doc(_userId).collection('transactions')
       .where('walletId', isEqualTo: walletId)
       .where('transactionDate', isGreaterThanOrEqualTo: start)
@@ -211,18 +186,119 @@ class FirestoreService {
       .snapshots()
       .map((snapshot) => snapshot.docs.map((doc) => Transaction.fromFirestore(doc)).toList());
   }
+  
+  Stream<Map<String, double>> getDailySummary(List<String> walletIds) {
+    if (_userId == null) return Stream.value({'income': 0, 'expense': 0, 'difference': 0});
+    DateTime now = DateTime.now();
+    DateTime start = DateTime(now.year, now.month, now.day);
+    DateTime end = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    Query query = _db.collection('users').doc(_userId).collection('transactions');
+    if (walletIds.isNotEmpty) {
+      query = query.where('walletId', whereIn: walletIds);
+    }
+    return query
+      .where('transactionDate', isGreaterThanOrEqualTo: start)
+      .where('transactionDate', isLessThanOrEqualTo: end)
+      .snapshots()
+      .map((snapshot) {
+        double income = 0; double expense = 0;
+        for (var doc in snapshot.docs) {
+          final transaction = Transaction.fromFirestore(doc);
+          if (transaction.type == TransactionType.income) {
+            income += transaction.amount;
+          } else {
+            expense += transaction.amount;
+          }
+        }
+        return {
+          'income': income, 
+          'expense': expense,
+          'difference': income - expense
+        };
+      });
+  }
 
-  Future<void> addTransaction({
-    required String walletId,
-    required String description,
-    required double amount,
-    required TransactionType type,
-  }) async {
+   Stream<Map<String, double>> getMonthlySummary(List<String> walletIds) {
+    if (_userId == null) return Stream.value({'income': 0, 'expense': 0, 'difference': 0});
+    
+    DateTime now = DateTime.now();
+    DateTime start = DateTime(now.year, now.month, 1); // Awal bulan ini
+    DateTime end = DateTime(now.year, now.month + 1, 0, 23, 59, 59); // Akhir bulan ini
+
+    Query query = _db.collection('users').doc(_userId).collection('transactions');
+    
+    if (walletIds.isNotEmpty) {
+      query = query.where('walletId', whereIn: walletIds);
+    }
+    
+    return query
+      .where('transactionDate', isGreaterThanOrEqualTo: start)
+      .where('transactionDate', isLessThanOrEqualTo: end)
+      .snapshots()
+      .map((snapshot) {
+        double income = 0; double expense = 0;
+        for (var doc in snapshot.docs) {
+          final transaction = Transaction.fromFirestore(doc);
+          if (transaction.type == TransactionType.income) {
+            income += transaction.amount;
+          } else {
+            expense += transaction.amount;
+          }
+        }
+        return {
+          'income': income, 
+          'expense': expense,
+          'difference': income - expense
+        };
+      });
+  }
+
+  Stream<List<Transaction>> getFilteredTransactions({ required DateTimeRange dateRange, List<String> walletIds = const [], }) {
+    if (_userId == null) return Stream.value([]);
+    Query query = _db.collection('users').doc(_userId).collection('transactions')
+      .where('transactionDate', isGreaterThanOrEqualTo: dateRange.start)
+      .where('transactionDate', isLessThanOrEqualTo: dateRange.end);
+    if (walletIds.isNotEmpty) {
+      query = query.where('walletId', whereIn: walletIds);
+    }
+    return query
+      .orderBy('transactionDate', descending: true)
+      .snapshots()
+      .map((snapshot) => snapshot.docs.map((doc) => Transaction.fromFirestore(doc)).toList());
+  }
+
+  Stream<Map<String, double>> getMonthlyExpenseByCategory(List<String> walletIds) {
+    if (_userId == null) return Stream.value({});
+
+    DateTime now = DateTime.now();
+    DateTime startOfMonth = DateTime(now.year, now.month, 1);
+    DateTime endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+
+    Query query = _db.collection('users').doc(_userId).collection('transactions')
+        .where('type', isEqualTo: 'expense')
+        .where('transactionDate', isGreaterThanOrEqualTo: startOfMonth)
+        .where('transactionDate', isLessThanOrEqualTo: endOfMonth);
+
+    if (walletIds.isNotEmpty) {
+        query = query.where('walletId', whereIn: walletIds);
+    }
+
+    // [TAMBAHAN] Tambahkan orderBy agar konsisten dengan indeks yang dibuat
+    return query.orderBy('transactionDate').snapshots().map((snapshot) {
+      Map<String, double> categoryExpenses = {};
+      for (var doc in snapshot.docs) {
+        final transaction = Transaction.fromFirestore(doc);
+        String category = transaction.description; 
+        categoryExpenses.update(category, (value) => value + transaction.amount, ifAbsent: () => transaction.amount);
+      }
+      return categoryExpenses;
+    });
+  }
+  
+  Future<void> addTransaction({ required String walletId, required String description, required double amount, required TransactionType type, }) async {
     if (_userId == null) return;
-
     final walletRef = _db.collection('users').doc(_userId).collection('wallets').doc(walletId);
     final transactionRef = _db.collection('users').doc(_userId).collection('transactions').doc();
-
     final newTransaction = Transaction(
       id: transactionRef.id,
       description: description,
@@ -231,12 +307,10 @@ class FirestoreService {
       transactionDate: DateTime.now(),
       walletId: walletId,
     );
-
     WriteBatch batch = _db.batch();
     batch.set(transactionRef, newTransaction.toFirestore());
     double amountChange = (type == TransactionType.income) ? amount : -amount;
     batch.update(walletRef, {'balance': FieldValue.increment(amountChange)});
-
     await batch.commit();
   }
 }

@@ -1,7 +1,7 @@
 // lib/pages/account_page.dart
 
 import 'package:budgetin_id/Providers/setting/setting_provider.dart';
-import 'package:budgetin_id/pages/auth/login_screen.dart';
+import 'package:budgetin_id/pages/auth/service/screen/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';

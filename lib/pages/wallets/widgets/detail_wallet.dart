@@ -1,14 +1,16 @@
-// wallet_detail.dart (REVISED)
+// lib/pages/wallets/widgets/detail_wallet.dart (REVISED)
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'models/transaction_model.dart';
-import 'models/wallet_model.dart';
-import '/services/firestore_service.dart';
-import '../thousand_formatter.dart';
 import 'package:provider/provider.dart';
+import './models/transaction_model.dart';
+import './models/wallet_model.dart';
+import '../../../services/firestore_service.dart';
+import '../service/thousand_formatter.dart';
 
-enum DisplayPeriod { monthly, daily }
+
+// Enum untuk pilihan periode tampilan
+enum DisplayPeriod { daily, monthly }
 
 class WalletDetailScreen extends StatefulWidget {
   final String walletId;
@@ -22,7 +24,8 @@ class WalletDetailScreen extends StatefulWidget {
 class _WalletDetailScreenState extends State<WalletDetailScreen> {
   late DateTime _selectedMonth;
   late DateTimeRange _currentDateRange;
-  final DisplayPeriod _selectedPeriod = DisplayPeriod.monthly;
+  // Menginisialisasi periode default ke bulanan
+  DisplayPeriod _selectedPeriod = DisplayPeriod.monthly;
 
   @override
   void initState() {
@@ -37,7 +40,7 @@ class _WalletDetailScreenState extends State<WalletDetailScreen> {
         final firstDay = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
         final lastDay = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0, 23, 59, 59);
         _currentDateRange = DateTimeRange(start: firstDay, end: lastDay);
-      } else {
+      } else { // Logika untuk filter harian
         final now = DateTime.now();
         final startOfDay = DateTime(now.year, now.month, now.day);
         final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
@@ -56,7 +59,7 @@ class _WalletDetailScreenState extends State<WalletDetailScreen> {
   void _goToNextMonth() {
     final now = DateTime.now();
     final nextMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 1);
-    if (nextMonth.isAfter(now)) return; 
+    if (nextMonth.isAfter(now)) return;
     setState(() {
       _selectedMonth = nextMonth;
       _updateDateRange();
@@ -155,13 +158,18 @@ class _WalletDetailScreenState extends State<WalletDetailScreen> {
         final wallet = walletSnapshot.data!;
 
         return Scaffold(
-          appBar: AppBar(title: Text(wallet.walletName)),
+          appBar: AppBar(
+            title: Text(wallet.walletName),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+          ),
           body: Column(
             children: [
-              _buildHeader(context, wallet, currencyFormatter, firestoreService),
+              _buildHeader(context, wallet, currencyFormatter),
+              // Menampilkan navigasi bulan hanya jika filter bulanan aktif
               if (_selectedPeriod == DisplayPeriod.monthly) _buildMonthNavigator(),
               const Padding(
-                padding: EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 8.0),
+                padding: EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 0),
                 child: Row(
                   children: [
                     Icon(Icons.history, color: Colors.grey),
@@ -177,43 +185,56 @@ class _WalletDetailScreenState extends State<WalletDetailScreen> {
                     if (transactionSnapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
-                    
-                    // KRUSIAL: Tambahkan penanganan error
                     if (transactionSnapshot.hasError) {
                       debugPrint("Error fetching transactions: ${transactionSnapshot.error}");
-                      return Center(
+                      return const Center(
                         child: Padding(
-                          padding: const EdgeInsets.all(16.0),
+                          padding: EdgeInsets.all(16.0),
                           child: Text(
-                            "Terjadi kesalahan saat memuat transaksi. Kemungkinan Anda perlu membuat index di Firestore. Cek log untuk detail.",
+                            "Terjadi kesalahan saat memuat transaksi. Anda mungkin perlu membuat index komposit di Firestore. Cek log untuk detail.",
                             textAlign: TextAlign.center,
                           ),
                         ),
                       );
                     }
-                    
                     if (!transactionSnapshot.hasData || transactionSnapshot.data!.isEmpty) {
-                      return const Center(child: Text("Belum ada transaksi pada periode ini."));
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Text(
+                            "Belum ada transaksi pada periode ini.",
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      );
                     }
                     final transactions = transactionSnapshot.data!;
                     return ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 80),
                       itemCount: transactions.length,
                       itemBuilder: (context, index) {
                         final transaction = transactions[index];
                         final isIncome = transaction.type == TransactionType.income;
-                        return ListTile(
-                          leading: Icon(
-                            isIncome ? Icons.arrow_downward : Icons.arrow_upward,
-                            color: isIncome ? Colors.green : Colors.red,
-                          ),
-                          title: Text(transaction.description),
-                          subtitle: Text(DateFormat.yMMMMEEEEd('id_ID').add_Hm().format(transaction.transactionDate)),
-                          trailing: Text(
-                            "${isIncome ? '+' : '-'} ${currencyFormatter.format(transaction.amount)}",
-                            style: TextStyle(
-                              color: isIncome ? Colors.green : Colors.red,
-                              fontWeight: FontWeight.w600,
+                        return Card(
+                          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: (isIncome ? Colors.green : Colors.red).withOpacity(0.1),
+                              child: Icon(
+                                isIncome ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+                                color: isIncome ? Colors.green : Colors.red,
+                              ),
+                            ),
+                            title: Text(transaction.description),
+                            subtitle: Text(DateFormat.yMMMMEEEEd('id_ID').add_Hm().format(transaction.transactionDate)),
+                            trailing: Text(
+                              "${isIncome ? '+' : '-'} ${currencyFormatter.format(transaction.amount)}",
+                              style: TextStyle(
+                                color: isIncome ? Colors.green.shade700 : Colors.red.shade700,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
                             ),
                           ),
                         );
@@ -224,44 +245,106 @@ class _WalletDetailScreenState extends State<WalletDetailScreen> {
               ),
             ],
           ),
-          floatingActionButton: FloatingActionButton(
+          floatingActionButton: FloatingActionButton.extended(
             onPressed: () => _showAddTransactionDialog(context),
             tooltip: "Tambah Transaksi",
-            child: const Icon(Icons.add),
+            icon: const Icon(Icons.add),
+            label: const Text("Transaksi"),
           ),
         );
       },
     );
   }
 
-  Widget _buildHeader(BuildContext context, Wallet wallet, NumberFormat currencyFormatter, FirestoreService firestoreService) {
-    return Card(
-      margin: const EdgeInsets.all(16.0),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("Total Saldo Saat Ini", style: TextStyle(color: Colors.grey)),
-            Text(
-              currencyFormatter.format(wallet.balance),
-              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            const Text("Tampilkan Statistik di Kartu", style: TextStyle(fontWeight: FontWeight.w500)),
-            const SizedBox(height: 8),
-            ToggleButtons(
-              isSelected: [wallet.displayPreference == 'daily', wallet.displayPreference == 'monthly'],
-              onPressed: (index) {
-                final newPreference = index == 0 ? 'daily' : 'monthly';
-                firestoreService.updateWalletPreference(widget.walletId, newPreference);
-              },
-              borderRadius: BorderRadius.circular(8),
-              constraints: BoxConstraints(minHeight: 40.0, minWidth: (MediaQuery.of(context).size.width - 80) / 2),
-              children: const [Text("Harian"), Text("Bulanan")],
-            ),
-          ],
+  // [PERUBAHAN UTAMA] Card dibuat lebih ringkas dan ToggleButtons di dalamnya
+  // kini berfungsi sebagai filter riwayat transaksi.
+  Widget _buildHeader(BuildContext context, Wallet wallet, NumberFormat currencyFormatter) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0), // Padding vertikal dikurangi
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          colors: [Colors.blue.shade700, Colors.blue.shade900],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.shade900.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Total Saldo Saat Ini",
+            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 15),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            currencyFormatter.format(wallet.balance),
+            style: const TextStyle(
+              fontSize: 30, // Ukuran font saldo sedikit dikurangi
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: 1.1,
+            ),
+          ),
+          const SizedBox(height: 16), // Jarak dikurangi
+          Center(
+            child: ToggleButtons(
+              isSelected: [
+                _selectedPeriod == DisplayPeriod.daily,
+                _selectedPeriod == DisplayPeriod.monthly,
+              ],
+              onPressed: (index) {
+                setState(() {
+                  _selectedPeriod = index == 0 ? DisplayPeriod.daily : DisplayPeriod.monthly;
+                  // Reset ke bulan ini jika user memilih filter bulanan
+                  if (_selectedPeriod == DisplayPeriod.monthly) {
+                    _selectedMonth = DateTime.now();
+                  }
+                  _updateDateRange();
+                });
+              },
+              // Styling sesuai permintaan Anda
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.white70,
+              selectedColor: Colors.blue.shade800,
+              fillColor: Colors.white,
+              splashColor: Colors.white.withOpacity(0.2),
+              constraints: BoxConstraints(minHeight: 40.0, minWidth: (MediaQuery.of(context).size.width - 82) / 2),
+              children: const [
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.today, size: 18),
+                      SizedBox(width: 8),
+                      Text("Harian"),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.calendar_month, size: 18),
+                      SizedBox(width: 8),
+                      Text("Bulanan"),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

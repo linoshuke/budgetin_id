@@ -1,5 +1,3 @@
-// widgets/card_wallet.dart (REVISED)
-
 import 'package:budgetin_id/pages/wallets/widgets/detail_wallet.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -94,7 +92,7 @@ class _WalletCardState extends State<WalletCard> {
     );
   }
 
-  // [BARU] Dialog untuk konfirmasi hapus dompet
+  // Dialog untuk konfirmasi hapus dompet
   void _showDeleteConfirmationDialog(BuildContext context) {
     final TextEditingController confirmationController =
         TextEditingController();
@@ -196,6 +194,7 @@ class _WalletCardState extends State<WalletCard> {
         height: 200,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
+          // [PERUBAHAN] Gunakan warna dari themeExtension
           gradient: LinearGradient(
             colors: [Colors.blue.shade700, Colors.blue.shade900],
             begin: Alignment.topLeft,
@@ -230,7 +229,6 @@ class _WalletCardState extends State<WalletCard> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  // [REVISI] Mengganti ikon edit dengan menu
                   PopupMenuButton<String>(
                     onSelected: (value) {
                       if (value == 'edit') {
@@ -266,7 +264,6 @@ class _WalletCardState extends State<WalletCard> {
                   ),
                 ],
               ),
-              // ... sisa kode build tetap sama
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

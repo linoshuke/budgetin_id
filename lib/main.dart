@@ -7,6 +7,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:budgetin_id/pages/auth/service/auth_service.dart';
 import 'package:budgetin_id/services/firestore_service.dart';
 import 'package:provider/provider.dart';
+import 'package:budgetin_id/theme/app_theme.dart';
 import 'firebase_options.dart';
 
 import 'package:firebase_app_check/firebase_app_check.dart';
@@ -35,12 +36,22 @@ class MyApp extends StatelessWidget {
       providers: [
         Provider<AuthService>(create: (_) => AuthService()),
         Provider<FirestoreService>(create: (_) => FirestoreService()),
+          StreamProvider<User?>(
+          create: (context) => context.read<AuthService>().authStateChanges,
+          initialData: null,
+          ),
       ],
       child: MaterialApp(
         title: 'Budgetin',
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
           useMaterial3: true,
+            extensions: const <ThemeExtension<dynamic>>[
+            AppTheme(
+              cardGradientStart: Color(0xFF1E88E5), // Colors.blue.shade600
+              cardGradientEnd: Color(0xFF1565C0),   // Colors.blue.shade800
+            ),
+          ],
         ),
         debugShowCheckedModeBanner: false,
         home: const AuthWrapper(),
