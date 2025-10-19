@@ -14,38 +14,23 @@ import 'history_screen.dart';
 import 'statistics_screen.dart';
 import '/pages/wallets/wallet_screen.dart';
 
-// ... (Widget HomePage & _HomePageState tidak berubah) ...
+// Widget HomePage dan _HomePageState tidak berubah, bisa disalin dari kode Anda
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
-
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
-
   static final List<Widget> _widgetOptions = <Widget>[
-    const HomeContent(),
-    const HistoryPage(),
-    const WalletsScreen(),
-    const StatisticsPage(),
-    MorePage(onGoToHome: () {}),
+    const HomeContent(), const HistoryPage(), const WalletsScreen(), const StatisticsPage(), MorePage(onGoToHome: () {}),
   ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
+  void _onItemTapped(int index) { setState(() { _selectedIndex = index; }); }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _widgetOptions,
-      ),
+      body: IndexedStack(index: _selectedIndex, children: _widgetOptions),
       bottomNavigationBar: BottomAppBar(
         elevation: 8.0,
         padding: EdgeInsets.zero,
@@ -64,11 +49,9 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
   Widget _buildNavItem(IconData icon, String label, int index) {
     final isSelected = _selectedIndex == index;
     final color = isSelected ? Colors.indigo : Colors.grey.shade600;
-
     return InkWell(
         onTap: () => _onItemTapped(index),
         borderRadius: BorderRadius.circular(20),
@@ -232,9 +215,9 @@ class _HomeContentState extends State<HomeContent> {
               const SizedBox(height: 24),
               _buildTotalBalanceCard(),
               const SizedBox(height: 24),
-              _buildMonthlySummaryCard(), // [NAMA FUNGSI DIUBAH]
+              _buildMonthlySummaryCard(),
               const SizedBox(height: 24),
-              _buildMonthlyStatChart(), // [NAMA FUNGSI DIUBAH]
+              _buildMonthlyStatChart(),
               const SizedBox(height: 80),
             ],
           ),
@@ -325,50 +308,7 @@ class _HomeContentState extends State<HomeContent> {
       ),
     );
   }
-
-  // Widget _buildDailySummaryCard() {
-  //   final firestoreService = context.watch<FirestoreService>();
-  //   final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-    
-  //   return Column(
-  //     crossAxisAlignment: CrossAxisAlignment.start,
-  //     children: [
-  //       const Text('Ringkasan Hari Ini', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-  //       const SizedBox(height: 12),
-  //       Card(
-  //         elevation: 1,
-  //         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-  //         child: Padding(
-  //           padding: const EdgeInsets.symmetric(vertical: 16.0),
-  //           child: StreamBuilder<Map<String, double>>(
-  //             stream: firestoreService.getDailySummary(_selectedWalletIds),
-  //             builder: (context, snapshot) {
-  //               if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-  //                 return const Center(child: SizedBox(height: 78, child: CircularProgressIndicator()));
-  //               }
-  //               if (snapshot.hasError) {
-  //                 return const Center(child: Padding(padding: EdgeInsets.all(16.0), child: Text("Gagal memuat ringkasan.")));
-  //               }
-
-  //               final income = snapshot.data?['income'] ?? 0.0;
-  //               final expense = snapshot.data?['expense'] ?? 0.0;
-  //               final difference = snapshot.data?['difference'] ?? 0.0;
-
-  //               return Row(
-  //                 mainAxisAlignment: MainAxisAlignment.spaceAround,
-  //                 children: [
-  //                   _buildSummaryItem(Icons.arrow_downward, 'Masuk', currencyFormatter.format(income), Colors.green),
-  //                   _buildSummaryItem(Icons.arrow_upward, 'Keluar', currencyFormatter.format(expense), Colors.red),
-  //                   _buildSummaryItem(Icons.account_balance, 'Selisih', currencyFormatter.format(difference), Colors.blue),
-  //                 ],
-  //               );
-  //             },
-  //           ),
-  //         ),
-  //       ),
-  //     ],
-  //   );
-  // }
+  
    Widget _buildMonthlySummaryCard() {
     final firestoreService = context.watch<FirestoreService>();
     final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
@@ -376,7 +316,7 @@ class _HomeContentState extends State<HomeContent> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Ringkasan Bulan Ini', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), // Judul diubah
+        const Text('Ringkasan Bulan Ini', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
         Card(
           elevation: 1,
@@ -384,7 +324,6 @@ class _HomeContentState extends State<HomeContent> {
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16.0),
             child: StreamBuilder<Map<String, double>>(
-              // Memanggil metode BARU untuk data bulanan
               stream: firestoreService.getMonthlySummary(_selectedWalletIds),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
@@ -426,19 +365,15 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  // [PERUBAHAN UTAMA] Mengganti placeholder dengan Pie Chart dinamis
-   Widget _buildMonthlyStatChart() {
+  Widget _buildMonthlyStatChart() {
     final firestoreService = context.watch<FirestoreService>();
     final user = context.watch<User?>();
-
-    if (user == null) {
-      return const SizedBox.shrink();
-    }
+    if (user == null) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Statistik Bulan Ini', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), // Judul diubah
+        const Text('Statistik Pengeluaran Bulan Ini', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
         Card(
           elevation: 1,
@@ -453,33 +388,74 @@ class _HomeContentState extends State<HomeContent> {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(child: Text('Belum ada data pengeluaran bulan ini.', style: TextStyle(color: Colors.grey)));
+                // [FIX] Tampilkan pesan error jika ada, ini penting untuk debugging
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      "Gagal memuat chart. Pastikan indeks Firestore sudah aktif.", 
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.red.shade700)
+                    ),
+                  );
+                }
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.pie_chart_outline, size: 40, color: Colors.grey),
+                        SizedBox(height: 8),
+                        Text('Belum ada data pengeluaran bulan ini.', style: TextStyle(color: Colors.grey)),
+                      ],
+                    ),
+                  );
                 }
 
                 final data = snapshot.data!;
                 final totalExpense = data.values.fold(0.0, (sum, item) => sum + item);
                 int colorIndex = 0;
-                final List<Color> chartColors = [Colors.blue, Colors.red, Colors.green, Colors.orange, Colors.purple, Colors.teal];
+                final List<Color> chartColors = [Colors.blue, Colors.red, Colors.green, Colors.orange, Colors.purple, Colors.teal, Colors.pink, Colors.amber];
 
-                // Pie chart tidak perlu diubah, sudah benar
-                return PieChart(
-                  PieChartData(
-                    startDegreeOffset: -90,
-                    sectionsSpace: 2,
-                    centerSpaceRadius: 40,
-                    sections: data.entries.map((entry) {
-                      final color = chartColors[colorIndex++ % chartColors.length];
-                      final percentage = (entry.value / totalExpense) * 100;
-                      return PieChartSectionData(
-                        color: color,
-                        value: entry.value,
-                        title: '${percentage.toStringAsFixed(1)}%',
-                        radius: 50,
-                        titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-                      );
-                    }).toList(),
-                  ),
+                return Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: PieChart(
+                        PieChartData(
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 30,
+                          sections: data.entries.map((entry) {
+                            final color = chartColors[colorIndex++ % chartColors.length];
+                            return PieChartSectionData(
+                              color: color,
+                              value: entry.value,
+                              title: '${(entry.value / totalExpense * 100).toStringAsFixed(0)}%',
+                              radius: 50,
+                              titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: ListView(
+                        children: data.entries.map((entry) {
+                          final color = chartColors[data.keys.toList().indexOf(entry.key) % chartColors.length];
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2.0),
+                            child: Row(
+                              children: [
+                                Container(width: 12, height: 12, color: color),
+                                const SizedBox(width: 8),
+                                Expanded(child: Text(entry.key, overflow: TextOverflow.ellipsis)),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
                 );
               },
             ),

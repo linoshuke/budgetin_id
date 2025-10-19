@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link icon" href=">
+    <link rel="icon" href="favicon.ico"> <!-- Disarankan untuk menambahkan favicon -->
     <title>Budgetin - Ambil Kendali Penuh Atas Keuangan Anda</title>
     <meta name="description" content="Aplikasi manajemen keuangan sederhana untuk mencatat pemasukan, pengeluaran, membuat anggaran, dan mencapai target tabungan Anda. Tersedia di Android.">
     <style>
@@ -70,21 +70,29 @@
             margin: 0 auto 30px;
         }
         .btn {
-            display: inline-block;
+            display: inline-flex; /* Menggunakan inline-flex untuk alignment */
+            align-items: center;
+            justify-content: center;
             padding: 15px 35px;
             border-radius: 50px;
             text-decoration: none;
             font-weight: bold;
             transition: transform 0.2s, box-shadow 0.2s;
+            border: none; /* Menghilangkan border default */
+            cursor: pointer; /* Menjadikan kursor sebagai pointer */
         }
         .btn-primary {
             background-color: var(--primary-color);
             color: var(--white);
             box-shadow: 0 4px 15px rgba(13, 110, 253, 0.2);
         }
-        .btn:hover {
+        .btn:hover:not([disabled]) {
             transform: translateY(-3px);
             box-shadow: 0 7px 20px rgba(13, 110, 253, 0.3);
+        }
+        .btn[disabled] {
+            cursor: not-allowed;
+            opacity: 0.7;
         }
         
         /* Features Section */
@@ -158,7 +166,28 @@
         .footer-links a:hover {
             color: var(--white);
         }
+        
+        /* CSS untuk Animasi Spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            -webkit-animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
 
+        @keyframes spin {
+            to { -webkit-transform: rotate(360deg); }
+        }
+        @-webkit-keyframes spin {
+            to { -webkit-transform: rotate(360deg); }
+        }
+        
         /* Responsive */
         @media (max-width: 768px) {
             .hero h1 { font-size: 2.5em; }
@@ -172,7 +201,6 @@
     <header>
         <div class="container">
             <a href="/" class="logo">💰 Budgetin </a>
-            <!-- Anda bisa menambahkan tombol login di sini nanti -->
         </div>
     </header>
 
@@ -180,8 +208,15 @@
         <section class="hero">
             <h1>Ambil Kendali Penuh Atas Keuangan Anda</h1>
             <p>Berhenti bertanya-tanya ke mana uang Anda pergi. Lacak setiap pemasukan dan pengeluaran dengan mudah, rencanakan masa depan, dan capai tujuan finansial Anda.</p>
-            <a href="#download" class="btn btn-primary">Unduh Aplikasi Sekarang</a>
-            <!-- Ganti #download dengan link Google Play Store Anda nanti -->
+            
+            <!-- TOMBOL UNDUH DENGAN LINK YANG BENAR DAN ID UNTUK JAVASCRIPT -->
+            <a href="https://github.com/linoshuke/budgetin_id/releases/download/v1.0.0/app-release.apk" id="downloadBtn" class="btn btn-primary" download="budgetin-v1.0.0.apk">
+                <span id="btnText">Unduh Aplikasi Sekarang</span>
+                <span id="spinner" class="spinner" style="display: none;"></span>
+            </a>
+            <p id="download-note" style="font-size: 0.9em; color: var(--slate); margin-top: 15px; display: none;">
+                Unduhan telah dimulai! Anda mungkin perlu mengizinkan 'Instal dari sumber tidak dikenal' di Pengaturan Android Anda.
+            </p>
         </section>
 
         <section class="features">
@@ -221,20 +256,47 @@
             </div>
         </section>
         
-        <!-- Anda bisa menambahkan bagian lain seperti testimoni di sini -->
-
     </main>
 
     <footer>
         <div class="container">
             <div class="footer-links">
                 <a href="/ketentuan-layanan.html">Ketentuan Layanan</a>
-                <a href="/privacy_policy.html">Kebijakan Privasi</a> <!-- Ganti ini jika nama file Anda index.html -->
+                <a href="/privacy_policy.html">Kebijakan Privasi</a>
                 <a href="/hapus-data.html">Petunjuk Penghapusan Data</a>
             </div>
             <p>© 2025 Budgetin. Dibuat untuk membantu Anda meraih kebebasan finansial.</p>
         </div>
     </footer>
+
+    <!-- JAVASCRIPT UNTUK ANIMASI TOMBOL -->
+    <script>
+        const downloadBtn = document.getElementById('downloadBtn');
+        const btnText = document.getElementById('btnText');
+        const spinner = document.getElementById('spinner');
+        const downloadNote = document.getElementById('download-note');
+
+        downloadBtn.addEventListener('click', function() {
+            // Cek jika tombol sudah dinonaktifkan untuk mencegah klik ganda
+            if (downloadBtn.hasAttribute('disabled')) {
+                return;
+            }
+
+            // Ubah tampilan tombol
+            btnText.textContent = 'Mengunduh...';
+            spinner.style.display = 'inline-block';
+            downloadNote.style.display = 'block';
+
+            // Nonaktifkan tombol
+            downloadBtn.setAttribute('disabled', 'true');
+            
+            // Atur ulang tombol setelah beberapa saat
+            setTimeout(function() {
+                btnText.textContent = 'Unduhan Selesai!';
+                spinner.style.display = 'none';
+            }, 5000); // 5 detik
+        });
+    </script>
 
 </body>
 </html>

@@ -267,7 +267,7 @@ class FirestoreService {
       .map((snapshot) => snapshot.docs.map((doc) => Transaction.fromFirestore(doc)).toList());
   }
 
-  Stream<Map<String, double>> getMonthlyExpenseByCategory(List<String> walletIds) {
+   Stream<Map<String, double>> getMonthlyExpenseByCategory(List<String> walletIds) {
     if (_userId == null) return Stream.value({});
 
     DateTime now = DateTime.now();
@@ -283,8 +283,8 @@ class FirestoreService {
         query = query.where('walletId', whereIn: walletIds);
     }
 
-    // [TAMBAHAN] Tambahkan orderBy agar konsisten dengan indeks yang dibuat
-    return query.orderBy('transactionDate').snapshots().map((snapshot) {
+    // Cukup query seperti ini, tanpa .orderBy('transactionDate')
+    return query.snapshots().map((snapshot) {
       Map<String, double> categoryExpenses = {};
       for (var doc in snapshot.docs) {
         final transaction = Transaction.fromFirestore(doc);
@@ -293,6 +293,69 @@ class FirestoreService {
       }
       return categoryExpenses;
     });
+  }
+
+    Stream<Map<int, Map<String, double>>> getMonthlyTransactionSummary(String walletId) {
+    if (_userId == null) return Stream.value({});
+
+    DateTime now = DateTime.now();
+    DateTime startOfMonth = DateTime(now.year, now.month, 1);
+    DateTime endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+
+    return _db.collection('users').doc(_userId).collection('transactions')
+      .where('walletId', isEqualTo: walletId)
+      .where('transactionDate', isGreaterThanOrEqualTo: startOfMonth)
+      .where('transactionDate', isLessThanOrEqualTo: endOfMonth)
+      .orderBy('transactionDate')
+      .snapshots()
+      .map((snapshot) {
+        // Map<HariKe, { 'income': total, 'expense': total }>
+        Map<int, Map<String, double>> dailyTotals = {};
+
+        for (var doc in snapshot.docs) {
+          final transaction = Transaction.fromFirestore(doc);
+          final day = transaction.transactionDate.day;
+
+          // Inisialisasi map untuk hari tersebut jika belum ada
+          dailyTotals.putIfAbsent(day, () => {'income': 0.0, 'expense': 0.0});
+
+          if (transaction.type == TransactionType.income) {
+            dailyTotals[day]!['income'] = (dailyTotals[day]!['income'] ?? 0) + transaction.amount;
+          } else {
+            dailyTotals[day]!['expense'] = (dailyTotals[day]!['expense'] ?? 0) + transaction.amount;
+          }
+        }
+        return dailyTotals;
+      });
+  }
+  Stream<Map<int, List<Transaction>>> getMonthlyTransactionsGroupedByDay(String walletId) {
+    if (_userId == null) return Stream.value({});
+
+    DateTime now = DateTime.now();
+    DateTime startOfMonth = DateTime(now.year, now.month, 1);
+    DateTime endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+
+    return _db.collection('users').doc(_userId).collection('transactions')
+      .where('walletId', isEqualTo: walletId)
+      .where('transactionDate', isGreaterThanOrEqualTo: startOfMonth)
+      .where('transactionDate', isLessThanOrEqualTo: endOfMonth)
+      .orderBy('transactionDate')
+      .snapshots()
+      .map((snapshot) {
+        Map<int, List<Transaction>> groupedTransactions = {};
+        for (var doc in snapshot.docs) {
+          final transaction = Transaction.fromFirestore(doc);
+          final day = transaction.transactionDate.day;
+
+          // Jika belum ada list untuk hari ini, buat baru
+          if (!groupedTransactions.containsKey(day)) {
+            groupedTransactions[day] = [];
+          }
+          // Tambahkan transaksi ke list hari yang sesuai
+          groupedTransactions[day]!.add(transaction);
+        }
+        return groupedTransactions;
+      });
   }
   
   Future<void> addTransaction({ required String walletId, required String description, required double amount, required TransactionType type, }) async {
