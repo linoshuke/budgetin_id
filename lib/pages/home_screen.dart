@@ -12,7 +12,7 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart'; 
 import 'history_screen.dart';
 import 'statistics_screen.dart';
-import '/pages/wallets/wallet_screen.dart';
+import 'package:budgetin_id/pages/wallets/wallet_screen.dart';
 
 // Widget HomePage dan _HomePageState tidak berubah, bisa disalin dari kode Anda
 class HomePage extends StatefulWidget {
@@ -286,7 +286,7 @@ class _HomeContentState extends State<HomeContent> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.15),
+                    color: Colors.black.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Row(
