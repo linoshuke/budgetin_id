@@ -2,18 +2,34 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Models\User;
+use Kreait\Firebase\Contract\Auth as FirebaseAuth;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
-*/
+Route::post('/sync-user', function (Request $request, FirebaseAuth $firebaseAuth) {
+    $request->validate([
+        'token' => 'required|string',
+    ]);
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+    try {
+        $verifiedIdToken = $firebaseAuth->verifyIdToken($request->token);
+    } catch (\Exception $e) {
+        return response()->json(['message' => 'Invalid Firebase token'], 401);
+    }
+
+    $uid = $verifiedIdToken->claims()->get('sub');
+    $firebaseUser = $firebaseAuth->getUser($uid);
+
+    $user = User::updateOrCreate(
+        ['firebase_uid' => $uid],
+        [
+            'name' => $firebaseUser->displayName ?? 'User',
+            'email' => $firebaseUser->email,
+            'photo_url' => $firebaseUser->photoUrl,
+        ]
+    );
+
+    return response()->json([
+        'message' => 'User synced successfully',
+        'user' => $user,
+    ]);
 });
