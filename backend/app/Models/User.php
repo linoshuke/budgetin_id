@@ -15,9 +15,19 @@ class User extends Authenticatable
         'name',
         'email',
         'firebase_uid',
-        'photo_url',   
+        'photo_url',
+        'password',   
+    ];
+    
+    protected $hidden = [
+        'password',
+        'remember_token',
     ];
 
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+    ];
     public function wallets(): HasMany
     {
         return $this->hasMany(Wallet::class);
