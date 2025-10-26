@@ -10,13 +10,16 @@ return new class extends Migration
     {
         Schema::create('wallets', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            // Foreign key yang mengarah ke tabel users
+            $table->string('user_id'); 
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+
             $table->string('walletName');
             $table->string('category');
             $table->string('location');
-            $table->decimal('balance', 15, 2)->default(0.00); 
+            $table->decimal('balance', 15, 2)->default(0.00);
             $table->string('displayPreference')->default('monthly');
-            $table->timestamps(); 
+            $table->timestamps();
         });
     }
 

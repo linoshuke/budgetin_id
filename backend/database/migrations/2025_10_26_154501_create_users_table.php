@@ -9,13 +9,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
-            $table->id();
-            $table->string('firebase_uid')->unique()->comment('UID dari Firebase Auth');
-            $table->string('name'); // Menggantikan displayName
+            // Kita gunakan UID dari Firebase sebagai Primary Key
+            $table->string('id')->primary(); 
+            $table->string('displayName');
             $table->string('email')->unique();
-            $table->string('photo_url')->nullable();
-            $table->timestamp('email_verified_at')->nullable(); 
-            $table->rememberToken();
+            $table->text('photoURL')->nullable();
             $table->timestamps();
         });
     }

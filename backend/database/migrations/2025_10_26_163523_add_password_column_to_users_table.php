@@ -6,19 +6,18 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Jalankan migrasi.
-     */
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('firebase_uid')->nullable()->change();
+            // Ini baris yang paling penting
+            $table->string('password')->nullable()->after('email');
         });
     }
+
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('firebase_uid')->nullable(false)->change();
+            $table->dropColumn('password');
         });
     }
 };

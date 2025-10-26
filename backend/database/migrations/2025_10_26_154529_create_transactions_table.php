@@ -10,10 +10,12 @@ return new class extends Migration
     {
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
+            // Foreign key yang mengarah ke tabel wallets
             $table->foreignId('wallet_id')->constrained()->onDelete('cascade');
+
             $table->string('description');
             $table->decimal('amount', 15, 2);
-            $table->enum('type', ['income', 'expense']); // Enum untuk membatasi nilai
+            $table->enum('type', ['income', 'expense']);
             $table->timestamp('transactionDate');
             $table->timestamps();
         });

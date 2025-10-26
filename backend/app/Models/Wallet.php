@@ -4,8 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Wallet extends Model
 {
@@ -20,11 +18,18 @@ class Wallet extends Model
         'displayPreference',
     ];
 
-    public function user(): BelongsTo
+    /**
+     * Sebuah Wallet dimiliki oleh satu User.
+     */
+    public function user()
     {
         return $this->belongsTo(User::class);
     }
-    public function transactions(): HasMany
+
+    /**
+     * Sebuah Wallet memiliki banyak Transaction.
+     */
+    public function transactions()
     {
         return $this->hasMany(Transaction::class);
     }
