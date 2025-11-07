@@ -1,0 +1,87 @@
+{
+  "app_name": "Budgetin",
+  "description": "Aplikasi manajemen keuangan pribadi dan keluarga untuk memantau pemasukan, pengeluaran, saldo multi-akun, anggaran, serta laporan keuangan dengan antarmuka sederhana dan ramah pengguna.",
+  "flow": {
+    "app_open": {
+      "first_time_user": "Langsung ke Home Page dengan mode offline (anonim). Login hanya diperlukan jika pengguna menekan ikon akun.",
+      "returning_user": "Langsung ke Home Page. Jika sebelumnya sudah login, data otomatis tersinkronisasi."
+    },
+    "login_page": {
+      "options": ["Login dengan Google", "Login dengan Email/Password", "Registrasi akun baru", "Tetap gunakan anonim (offline mode)"]
+    },
+    "after_login": {
+      "account_menu": ["Profil", "Pengaturan akun", "Logout"]
+    }
+  },
+  "home_page": {
+    "sections": [
+      {
+        "header": "Sapaan & Total Saldo",
+        "content": "Menampilkan sapaan pengguna dan total semua saldo dari berbagai dompet."
+      },
+      {
+        "header": "Dompet Saya",
+        "content": "Daftar semua akun/dompet (GoPay, Tunai, Bank BCA, dll) dengan saldo masing-masing dan tombol tambah dompet baru."
+      },
+      {
+        "header": "Ringkasan Hari Ini",
+        "content": "Pemasukan, pengeluaran, dan selisih transaksi harian."
+      },
+      {
+        "header": "Statistik Mini",
+        "content": "Grafik kecil (pie chart/bar chart) untuk melihat distribusi pengeluaran/pemasukan."
+      },
+      {
+        "header": "Shortcut",
+        "content": "Tombol cepat ke Riwayat, Statistik, Ekspor data."
+      },
+      {
+        "header": "FAB (Floating Action Button)",
+        "content": "Tombol ➕ melayang untuk menambahkan transaksi baru."
+      }
+    ],
+    "navigation": {
+      "type": "Bottom Navigation",
+      "items": ["Home", "Riwayat", "Tambah", "Statistik", "Akun"]
+    }
+  },
+  "features": {
+    "transaction_management": {
+      "description": "Tambah, edit, dan hapus transaksi dengan kategori yang dapat disesuaikan.",
+      "extra": ["Filter harian, mingguan, bulanan", "Catat sumber dana"]
+    },
+    "multi_wallet": {
+      "description": "Kelola saldo dari berbagai akun (eWallet, bank, tunai).",
+      "extra": ["Tambah akun baru", "Edit nama akun", "Hapus akun"]
+    },
+    "budgeting": {
+      "description": "Atur batas anggaran bulanan per kategori.",
+      "extra": ["Notifikasi jika melebihi anggaran"]
+    },
+    "reports": {
+      "description": "Ekspor laporan keuangan",
+      "formats": ["PDF", "CSV", "Excel"]
+    },
+    "statistics": {
+      "description": "Grafik pemasukan/pengeluaran per kategori dan periode.",
+      "types": ["Pie Chart", "Bar Chart", "Line Chart"]
+    },
+    "saving_feature": {
+      "description": "Fitur menabung dengan target tertentu."
+    },
+    "sync_feature": {
+      "description": "Sinkronisasi data melalui akun Firebase untuk keamanan dan akses multi-perangkat."
+    },
+    "settings": {
+      "description": "Pengaturan dasar aplikasi seperti tema, bahasa, format mata uang."
+    }
+  },
+  "data_storage": {
+    "firebase": {
+      "auth": "Menyimpan data login dan otentikasi pengguna",
+      "firestore": "Menyimpan transaksi, dompet, laporan, anggaran",
+      "storage": "Menyimpan file ekspor jika perlu",
+      "security": "Menggunakan Firebase Rules untuk proteksi data"
+    }
+  }
+}

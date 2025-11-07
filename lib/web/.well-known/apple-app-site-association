@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "ABC123DEF4.com.example.budgetinId",
+        "paths": ["/verifyEmail", "/passwordReset"]
+      }
+    ]
+  }
+}
