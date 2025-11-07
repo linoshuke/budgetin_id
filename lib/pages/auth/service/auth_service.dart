@@ -103,10 +103,16 @@ class AuthService {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return null;
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final String? idToken = googleAuth.idToken;
+      if (idToken != null) {
+        debugPrint('================== FIREBASE ID TOKEN ==================');
+        debugPrint(idToken);
+        debugPrint('=======================================================');
+      }
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
+        idToken: googleAuth.idToken, // di sini tokennya digunakan
       );
 
       final userCredential = await _auth.signInWithCredential(credential);
