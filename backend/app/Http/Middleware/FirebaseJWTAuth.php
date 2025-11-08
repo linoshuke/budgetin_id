@@ -5,9 +5,10 @@ namespace App\Http\Middleware;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Kreait\Firebase\Auth as FirebaseAuth;
-use Kreait\Firebase\Exception\Auth\IdTokenExpired;
-use Kreait\Firebase\Exception\Auth\InvalidIdToken;
+use Kreait\Firebase\Exception\Auth\RevokedIdToken; 
+use Kreait\Firebase\Exception\InvalidArgumentException; 
 
 class FirebaseJWTAuth
 {
@@ -30,8 +31,6 @@ class FirebaseJWTAuth
             $verifiedIdToken = $this->firebaseAuth->verifyIdToken($token);
             $uid = $verifiedIdToken->claims()->get('sub');
 
-            // Cari user di database lokal berdasarkan 'id', atau buat baru jika belum ada.
-            // Kode ini sudah benar sesuai dengan skema database Anda.
             $user = User::firstOrCreate(
                 ['id' => $uid],
                 [
@@ -41,14 +40,14 @@ class FirebaseJWTAuth
                 ]
             );
 
-            // Mengatur user yang terautentikasi untuk request ini.
-            // Ini adalah cara yang lebih disukai untuk API stateless.
-            auth()->setUser($user);
+            Auth::setUser($user);
 
-        } catch (IdTokenExpired $e) {
-            return response()->json(['message' => 'Token telah kedaluwarsa.'], 401);
-        } catch (InvalidIdToken $e) {
-            return response()->json(['message' => 'Token tidak valid.'], 401);
+        // [PERBAIKAN] Menangkap exception yang sesuai
+        } catch (RevokedIdToken $e) {
+            return response()->json(['message' => 'Token telah dicabut (revoked).'], 401);
+        } catch (InvalidArgumentException $e) {
+            // Exception ini akan menangkap token yang tidak valid atau kedaluwarsa
+            return response()->json(['message' => 'Token tidak valid atau telah kedaluwarsa: ' . $e->getMessage()], 401);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Terjadi kesalahan saat verifikasi token: ' . $e->getMessage()], 401);
         }
