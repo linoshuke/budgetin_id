@@ -2,21 +2,20 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Kreait\Firebase\Factory;
 use Kreait\Firebase\Auth as FirebaseAuth;
-use Kreait\Firebase\Exception\Auth\RevokedIdToken; 
-use Kreait\Firebase\Exception\InvalidArgumentException; 
+use App\Models\User; // Pastikan model User Anda ada di sini
+use Illuminate\Support\Facades\Auth;
 
 class FirebaseJWTAuth
 {
-    protected $firebaseAuth;
+    protected $auth;
 
-    public function __construct(FirebaseAuth $firebaseAuth)
+    public function __construct(FirebaseAuth $auth)
     {
-        $this->firebaseAuth = $firebaseAuth;
+        $this->auth = $auth;
     }
 
     public function handle(Request $request, Closure $next)
@@ -24,33 +23,32 @@ class FirebaseJWTAuth
         $token = $request->bearerToken();
 
         if (!$token) {
-            return response()->json(['message' => 'Token tidak disediakan.'], 401);
+            return response()->json(['success' => false, 'message' => 'Token tidak ditemukan.'], 401);
         }
 
         try {
-            $verifiedIdToken = $this->firebaseAuth->verifyIdToken($token);
-            $uid = $verifiedIdToken->claims()->get('sub');
-
-            $user = User::firstOrCreate(
-                ['id' => $uid],
-                [
-                    'email' => $verifiedIdToken->claims()->get('email'),
-                    'displayName' => $verifiedIdToken->claims()->get('name', 'User'),
-                    'photoURL' => $verifiedIdToken->claims()->get('picture'),
-                ]
-            );
-
-            Auth::setUser($user);
-
-        // [PERBAIKAN] Menangkap exception yang sesuai
-        } catch (RevokedIdToken $e) {
-            return response()->json(['message' => 'Token telah dicabut (revoked).'], 401);
-        } catch (InvalidArgumentException $e) {
-            // Exception ini akan menangkap token yang tidak valid atau kedaluwarsa
-            return response()->json(['message' => 'Token tidak valid atau telah kedaluwarsa: ' . $e->getMessage()], 401);
+            $verifiedIdToken = $this->auth->verifyIdToken($token);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Terjadi kesalahan saat verifikasi token: ' . $e->getMessage()], 401);
+            // Jika token tidak valid (kadaluwarsa, format salah, dll.)
+            return response()->json(['success' => false, 'message' => 'Token tidak valid: ' . $e->getMessage()], 401);
         }
+
+        // Ambil UID dari token
+        $uid = $verifiedIdToken->claims()->get('sub');
+
+        // Cari atau buat user baru di database Laravel Anda
+        // Sesuaikan 'firebase_uid' dengan nama kolom di tabel users Anda
+        $user = User::firstOrCreate(
+            ['firebase_uid' => $uid],
+            [
+                'name' => $verifiedIdToken->claims()->get('name', 'User'),
+                'email' => $verifiedIdToken->claims()->get('email'),
+                'password' => bcrypt(uniqid()), // Isi dengan password acak jika diperlukan
+            ]
+        );
+
+        // Login-kan user untuk request ini
+        Auth::setUser($user);
 
         return $next($request);
     }
