@@ -17,6 +17,11 @@ class Transaction extends Model
         'transactionDate',
     ];
 
+    protected $casts = [
+        'transactionDate' => 'datetime',
+        'amount' => 'decimal:2',
+    ];
+
     /**
      * Sebuah Transaction dimiliki oleh satu Wallet.
      */

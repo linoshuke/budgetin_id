@@ -5,8 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:budgetin_id/pages/auth/service/email_verification.dart';
 import 'package:budgetin_id/pages/auth/service/auth_service.dart';
+import 'package:budgetin_id/services/api_auth_service.dart' hide UsageLimitExceededException, GoogleSignUpNotAllowedException, GoogleAccountAlreadyExistsException;
+import 'package:budgetin_id/config/app_config.dart';
 import 'package:budgetin_id/pages/usageservice.dart';
 import 'package:budgetin_id/pages/webviewscreen.dart';
+import 'package:provider/provider.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -15,7 +18,7 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
-  final AuthService _authService = AuthService();
+  final AuthService _firebaseAuthService = AuthService();
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -84,16 +87,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final password = _passwordController.text.trim();
     final username = _usernameController.text.trim();
     try {
-      final User? user = await _authService.signUpWithEmailAndPassword(
-        email,
-        password,
-        username,
-      );
-      if (mounted && user != null) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const EmailVerificationScreen()),
-          (route) => false,
+      if (AppConfig.useLaravelApi) {
+        // Use Laravel API - no email verification needed
+        final apiAuthService = context.read<ApiAuthService>();
+        await apiAuthService.signUpWithEmailAndPassword(email, password, username);
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const HomePage()),
+            (route) => false,
+          );
+        }
+      } else {
+        // Use Firebase
+        final User? user = await _firebaseAuthService.signUpWithEmailAndPassword(
+          email,
+          password,
+          username,
         );
+        if (mounted && user != null) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const EmailVerificationScreen()),
+            (route) => false,
+          );
+        }
       }
     } on FirebaseAuthException catch (e) {
       String message;
@@ -111,31 +127,44 @@ class _SignUpScreenState extends State<SignUpScreen> {
           message = 'Registrasi gagal: ${e.message}';
       }
       _showErrorSnackBar(message);
+    } on AuthException catch (e) {
+      _showErrorSnackBar(e.message);
     } on UsageLimitExceededException catch (e) {
       _showErrorSnackBar(e.message, isWarning: true);
     } catch (e) {
-      _showErrorSnackBar('Terjadi kesalahan tidak dikenal: ${e.toString()}');
+      _showErrorSnackBar('Terjadi kesalahan: ${e.toString()}');
     } finally {
       _setLoading(false);
     }
   }
 
-  // [LOGIKA DIPERBAIKI]
   Future<void> _handleGoogleSignUp() async {
     _setLoading(true);
     try {
-      final user = await _authService.signUpWithGoogle();
-      if (user != null && mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const HomePage()),
-          (route) => false,
-        );
+      if (AppConfig.useLaravelApi) {
+        // Use Laravel API with Firebase token verification
+        final apiAuthService = context.read<ApiAuthService>();
+        final user = await apiAuthService.signUpWithGoogle();
+        if (user != null && mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const HomePage()),
+            (route) => false,
+          );
+        }
+      } else {
+        // Use Firebase directly
+        final user = await _firebaseAuthService.signUpWithGoogle();
+        if (user != null && mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const HomePage()),
+            (route) => false,
+          );
+        }
       }
-    // [FIX] Tangani error jika akun Google sudah terdaftar
     } on GoogleAccountAlreadyExistsException catch (e) {
-      if (mounted) {
-        _showErrorSnackBar(e.message);
-      }
+      if (mounted) _showErrorSnackBar(e.message);
+    } on AuthException catch (e) {
+      if (mounted) _showErrorSnackBar(e.message);
     } on FirebaseAuthException catch (e) {
       if (mounted) {
         if (e.code == 'account-exists-with-different-credential') {
@@ -148,7 +177,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       }
     } catch (e) {
       if (e is! Exception || !e.toString().toLowerCase().contains('canceled')) {
-         if(mounted) _showErrorSnackBar('Pendaftaran dengan Google gagal.');
+         if(mounted) _showErrorSnackBar('Pendaftaran dengan Google gagal: ${e.toString()}');
       }
     } finally {
       _setLoading(false);

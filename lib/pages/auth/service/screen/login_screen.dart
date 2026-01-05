@@ -3,11 +3,14 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:budgetin_id/pages/auth/service/auth_service.dart';
+import 'package:budgetin_id/services/api_auth_service.dart' hide UsageLimitExceededException, GoogleSignUpNotAllowedException, GoogleAccountAlreadyExistsException;
+import 'package:budgetin_id/config/app_config.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:budgetin_id/pages/auth/service/screen/signup_screen.dart';
 import 'package:budgetin_id/pages/webviewscreen.dart';
 import 'package:budgetin_id/pages/usageservice.dart';
 import 'package:budgetin_id/pages/home_screen.dart';
+import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,7 +20,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final AuthService _authService = AuthService();
+  final AuthService _firebaseAuthService = AuthService();
   final _formKey = GlobalKey<FormState>();
 
   final _emailController = TextEditingController();
@@ -83,7 +86,14 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text.trim();
 
     try {
-      await _authService.signInWithEmailAndPassword(email, password);
+      if (AppConfig.useLaravelApi) {
+        // Use Laravel API
+        final apiAuthService = context.read<ApiAuthService>();
+        await apiAuthService.signInWithEmailAndPassword(email, password);
+      } else {
+        // Use Firebase
+        await _firebaseAuthService.signInWithEmailAndPassword(email, password);
+      }
 
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
@@ -107,30 +117,45 @@ class _LoginScreenState extends State<LoginScreen> {
           message = 'Masuk gagal. Pastikan data Anda benar.';
       }
       if (mounted) _showErrorSnackBar(message);
+    } on AuthException catch (e) {
+      if (mounted) _showErrorSnackBar(e.message);
     } on UsageLimitExceededException catch (e) {
       if (mounted) _showErrorSnackBar(e.message, isWarning: true);
     } catch (e) {
       if (mounted) {
-        _showErrorSnackBar('Terjadi kesalahan yang tidak diketahui.');
+        _showErrorSnackBar('Terjadi kesalahan: ${e.toString()}');
       }
     } finally {
       _setLoading(false);
     }
   }
 
-  // [LOGIC DIPERBARUI] Menangani exception baru untuk Google Sign In
   Future<void> _handleGoogleSignIn() async {
     _setLoading(true);
     try {
-      final user = await _authService.signInWithGoogle();
-      if (user != null && mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const HomePage()),
-          (route) => false,
-        );
+      if (AppConfig.useLaravelApi) {
+        // Use Laravel API with Firebase token verification
+        final apiAuthService = context.read<ApiAuthService>();
+        final user = await apiAuthService.signInWithGoogle();
+        if (user != null && mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const HomePage()),
+            (route) => false,
+          );
+        }
+      } else {
+        // Use Firebase directly
+        final user = await _firebaseAuthService.signInWithGoogle();
+        if (user != null && mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const HomePage()),
+            (route) => false,
+          );
+        }
       }
     } on GoogleSignUpNotAllowedException catch (e) {
-      // Menangkap error spesifik jika akun belum terdaftar
+      _showErrorSnackBar(e.message);
+    } on AuthException catch (e) {
       _showErrorSnackBar(e.message);
     } on FirebaseAuthException catch (e) {
       if (e.code == 'account-exists-with-different-credential') {
@@ -146,8 +171,8 @@ class _LoginScreenState extends State<LoginScreen> {
             !e.toString().toLowerCase().contains('dibatalkan')) {
           _showErrorSnackBar('Terjadi kesalahan saat login dengan Google.');
         }
-      } else {
-        _showErrorSnackBar('Terjadi kesalahan tak terduga.');
+      } else if (mounted) {
+        _showErrorSnackBar('Terjadi kesalahan tak terduga: ${e.toString()}');
       }
     } finally {
       _setLoading(false);
@@ -194,7 +219,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Navigator.of(dialogContext).pop();
               _setLoading(true);
               try {
-                await _authService.sendPasswordResetEmail(
+                await _firebaseAuthService.sendPasswordResetEmail(
                   emailResetController.text.trim(),
                 );
                 if (!mounted) return;
