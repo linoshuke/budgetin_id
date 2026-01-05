@@ -34,7 +34,6 @@ class GoogleAccountAlreadyExistsException implements Exception {
   GoogleAccountAlreadyExistsException(this.message);
 }
 
-
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
@@ -46,7 +45,9 @@ class AuthService {
 
   List<String> get currentUserProviders {
     if (currentUser == null) return [];
-    return currentUser!.providerData.map((userInfo) => userInfo.providerId).toList();
+    return currentUser!.providerData
+        .map((userInfo) => userInfo.providerId)
+        .toList();
   }
 
   Future<User?> signInWithEmailAndPassword(
@@ -54,10 +55,15 @@ class AuthService {
     String password,
   ) async {
     if (!await _usageLimiter.canPerformAction(LimitedAction.loginOrSignup)) {
-      throw UsageLimitExceededException('Anda telah mencapai batas maksimal login. Coba lagi dalam 24 jam.');
+      throw UsageLimitExceededException(
+        'Anda telah mencapai batas maksimal login. Coba lagi dalam 24 jam.',
+      );
     }
     try {
-      final userCredential = await _auth.signInWithEmailAndPassword(email: email, password: password);
+      final userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
       await _usageLimiter.recordAction(LimitedAction.loginOrSignup);
       return userCredential.user;
     } on FirebaseAuthException {
@@ -71,21 +77,29 @@ class AuthService {
     String displayName,
   ) async {
     if (!await _usageLimiter.canPerformAction(LimitedAction.loginOrSignup)) {
-      throw UsageLimitExceededException('Anda telah mencapai batas maksimal registrasi. Coba lagi dalam 24 jam.');
+      throw UsageLimitExceededException(
+        'Anda telah mencapai batas maksimal registrasi. Coba lagi dalam 24 jam.',
+      );
     }
     try {
-      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(email: email, password: password);
-      
+      final UserCredential userCredential = await _auth
+          .createUserWithEmailAndPassword(email: email, password: password);
+
       final user = userCredential.user;
       if (user != null) {
         await user.updateDisplayName(displayName);
-        await _firestoreService.initializeUserData(user, displayName: displayName);
+        await _firestoreService.initializeUserData(
+          user,
+          displayName: displayName,
+        );
 
         try {
           await user.sendEmailVerification();
         } on FirebaseAuthException catch (e) {
           if (e.code == 'too-many-requests') {
-            debugPrint("Pendaftaran berhasil, tetapi pengiriman email verifikasi diblokir sementara.");
+            debugPrint(
+              "Pendaftaran berhasil, tetapi pengiriman email verifikasi diblokir sementara.",
+            );
           } else {
             rethrow;
           }
@@ -103,40 +117,44 @@ class AuthService {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return null;
 
-       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final String? idToken = googleAuth.idToken;
       if (idToken != null) {
-        debugPrint('================== FIREBASE ID TOKEN ==================');
+        debugPrint('---BEGIN FIREBASE ID TOKEN---');
         debugPrint(idToken);
-        debugPrint('=======================================================');
+        debugPrint('---END FIREBASE ID TOKEN---');
       }
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken, // di sini tokennya digunakan
+        idToken: googleAuth.idToken,
       );
 
       final userCredential = await _auth.signInWithCredential(credential);
       final user = userCredential.user;
-      
-      if (user != null && userCredential.additionalUserInfo?.isNewUser == true) {
+
+      if (user != null &&
+          userCredential.additionalUserInfo?.isNewUser == true) {
         await user.delete();
         await _googleSignIn.signOut();
         await _auth.signOut();
         throw GoogleSignUpNotAllowedException(
-          'Akun Google ini belum terdaftar. Silakan daftar terlebih dahulu.'
+          'Akun Google ini belum terdaftar. Silakan daftar terlebih dahulu.',
         );
       }
-      
+
       if (user != null) {
-        await _firestoreService.initializeUserData(user, displayName: user.displayName);
+        await _firestoreService.initializeUserData(
+          user,
+          displayName: user.displayName,
+        );
       }
       return user;
-
     } on FirebaseAuthException catch (e) {
       if (e.code == 'account-exists-with-different-credential') {
         final email = e.email;
         if (email != null && e.credential != null) {
-            throw PasswordVerificationRequiredException(e.credential!, email);
+          throw PasswordVerificationRequiredException(e.credential!, email);
         }
       }
       debugPrint("Error saat login dengan Google: $e");
@@ -150,7 +168,8 @@ class AuthService {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return null;
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -161,31 +180,40 @@ class AuthService {
 
       // [FIX] Periksa apakah pengguna BUKAN pengguna baru.
       // Jika false, berarti akun sudah ada, dan proses pendaftaran harus digagalkan.
-      if (user != null && userCredential.additionalUserInfo?.isNewUser == false) {
+      if (user != null &&
+          userCredential.additionalUserInfo?.isNewUser == false) {
         // Batalkan proses dengan sign out agar tidak terjadi login otomatis.
         await _googleSignIn.signOut();
         await _auth.signOut();
         // Lemparkan error spesifik yang akan ditangani di UI.
         throw GoogleAccountAlreadyExistsException(
-          'Akun Google ini sudah terdaftar. Silakan masuk melalui halaman login.'
+          'Akun Google ini sudah terdaftar. Silakan masuk melalui halaman login.',
         );
       }
-      
+
       // Jika pengguna adalah baru (isNewUser == true), lanjutkan inisialisasi data.
       if (user != null) {
-        await _firestoreService.initializeUserData(user, displayName: user.displayName);
+        await _firestoreService.initializeUserData(
+          user,
+          displayName: user.displayName,
+        );
       }
       return user;
-
     } on FirebaseAuthException {
       rethrow;
     }
   }
 
-
-  Future<User?> linkGoogleAfterPasswordVerification(String email, String password, AuthCredential googleCredential) async {
+  Future<User?> linkGoogleAfterPasswordVerification(
+    String email,
+    String password,
+    AuthCredential googleCredential,
+  ) async {
     try {
-      final emailCredential = EmailAuthProvider.credential(email: email, password: password);
+      final emailCredential = EmailAuthProvider.credential(
+        email: email,
+        password: password,
+      );
       final userCredential = await _auth.signInWithCredential(emailCredential);
       final user = userCredential.user;
 
@@ -210,9 +238,12 @@ class AuthService {
 
   Future<void> deleteUserAccount() async {
     final user = currentUser;
-    if (user == null) throw Exception("Tidak ada pengguna yang login untuk dihapus.");
-    
-    final isGoogleProvider = user.providerData.any((p) => p.providerId == 'google.com');
+    if (user == null)
+      throw Exception("Tidak ada pengguna yang login untuk dihapus.");
+
+    final isGoogleProvider = user.providerData.any(
+      (p) => p.providerId == 'google.com',
+    );
 
     try {
       await _firestoreService.deleteUserData();
@@ -221,7 +252,6 @@ class AuthService {
       if (isGoogleProvider) {
         await _googleSignIn.disconnect();
       }
-      
     } on FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {
         throw RequiresRecentLoginException();
@@ -238,7 +268,7 @@ class AuthService {
       debugPrint("Terjadi error tak terduga saat sign out: $e");
     }
   }
-  
+
   Future<void> linkWithGoogle() async {
     if (currentUser == null) throw Exception("User not logged in.");
 
@@ -248,15 +278,18 @@ class AuthService {
 
       if (googleUser.email != currentUser!.email) {
         await _googleSignIn.signOut();
-        throw Exception("Gagal menautkan. Email Google harus sama dengan email terdaftar Anda.");
+        throw Exception(
+          "Gagal menautkan. Email Google harus sama dengan email terdaftar Anda.",
+        );
       }
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
-      
+
       await currentUser!.linkWithCredential(credential);
     } on FirebaseAuthException catch (e) {
       if (e.code == 'credential-already-in-use') {
@@ -265,7 +298,7 @@ class AuthService {
       rethrow;
     }
   }
-  
+
   Future<void> addPasswordToAccount(String password) async {
     if (currentUser == null || currentUser!.email == null) {
       throw Exception("User tidak valid untuk menambahkan password.");
@@ -283,15 +316,19 @@ class AuthService {
   }
 
   Future<void> reauthenticateWithPassword(String password) async {
-    if (currentUser == null || currentUser!.email == null) throw Exception("User tidak valid.");
+    if (currentUser == null || currentUser!.email == null)
+      throw Exception("User tidak valid.");
     try {
-      final cred = EmailAuthProvider.credential(email: currentUser!.email!, password: password);
+      final cred = EmailAuthProvider.credential(
+        email: currentUser!.email!,
+        password: password,
+      );
       await currentUser!.reauthenticateWithCredential(cred);
     } on FirebaseAuthException {
       rethrow;
     }
   }
-  
+
   Future<void> reauthenticateWithGoogle() async {
     if (currentUser == null) throw Exception("User not logged in.");
     try {
