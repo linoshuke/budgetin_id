@@ -12,7 +12,9 @@ class FirestoreService {
 
   String? get _userId => _auth.currentUser?.uid;
 
-  // ... (semua metode yang sudah ada biarkan seperti semula) ...
+  // ========================================
+  // USER DOCUMENT
+  // ========================================
 
   Stream<DocumentSnapshot> get userDocumentStream {
     if (_userId == null) {
@@ -67,11 +69,17 @@ class FirestoreService {
     }
   }
 
+  // ========================================
+  // WALLET OPERATIONS
+  // ========================================
+
   Future<void> createDefaultWallets() async {
     if (_userId == null) return;
     final walletsRef = _db.collection('users').doc(_userId).collection('wallets');
     final existingWallets = await walletsRef.limit(1).get();
     if (existingWallets.docs.isNotEmpty) return;
+    
+    final now = DateTime.now();
     WriteBatch batch = _db.batch();
     final List<Map<String, dynamic>> defaultWalletsData = [
       {'walletName': 'Dompet Tunai', 'category': 'Uang Fisik', 'location': 'Cash'},
@@ -87,6 +95,11 @@ class FirestoreService {
         'balance': 0.0,
         'displayPreference': 'monthly',
         'createdAt': FieldValue.serverTimestamp(),
+        // Aggregation counters (initialized)
+        'monthlyIncome': 0.0,
+        'monthlyExpense': 0.0,
+        'lastResetMonth': now.month,
+        'lastResetYear': now.year,
       });
     }
     await batch.commit();
@@ -94,6 +107,7 @@ class FirestoreService {
 
   Future<void> addWallet({ required String name, required String category, required String location, }) async {
     if (_userId == null) return;
+    final now = DateTime.now();
     await _db.collection('users').doc(_userId).collection('wallets').add({
       'walletName': name,
       'category': category,
@@ -101,6 +115,11 @@ class FirestoreService {
       'balance': 0.0,
       'displayPreference': 'monthly',
       'createdAt': FieldValue.serverTimestamp(),
+      // Aggregation counters (initialized)
+      'monthlyIncome': 0.0,
+      'monthlyExpense': 0.0,
+      'lastResetMonth': now.month,
+      'lastResetYear': now.year,
     });
   }
   
@@ -117,12 +136,22 @@ class FirestoreService {
     await batch.commit();
   }
 
+  // Real-time stream untuk wallets (tetap diperlukan untuk UI reaktif)
   Stream<List<Wallet>> getWallets() {
     if (_userId == null) return Stream.value([]);
     return _db.collection('users').doc(_userId).collection('wallets')
       .orderBy('createdAt', descending: false)
       .snapshots()
       .map((snapshot) => snapshot.docs.map((doc) => Wallet.fromFirestore(doc)).toList());
+  }
+
+  // [OPTIMASI] One-time read untuk wallets (hemat reads)
+  Future<List<Wallet>> getWalletsOnce() async {
+    if (_userId == null) return [];
+    final snapshot = await _db.collection('users').doc(_userId).collection('wallets')
+      .orderBy('createdAt', descending: false)
+      .get();
+    return snapshot.docs.map((doc) => Wallet.fromFirestore(doc)).toList();
   }
 
   Stream<Wallet> getWallet(String walletId) {
@@ -143,6 +172,98 @@ class FirestoreService {
       .update({'displayPreference': preference});
   }
 
+  // ========================================
+  // [OPTIMASI] MONTHLY COUNTER OPERATIONS
+  // ========================================
+
+  /// Reset counter jika sudah bulan baru
+  Future<void> resetMonthlyCountersIfNeeded(String walletId) async {
+    if (_userId == null) return;
+    
+    final walletRef = _db.collection('users').doc(_userId).collection('wallets').doc(walletId);
+    final walletDoc = await walletRef.get();
+    
+    if (!walletDoc.exists) return;
+    
+    final data = walletDoc.data()!;
+    final lastResetMonth = data['lastResetMonth'] as int? ?? 0;
+    final lastResetYear = data['lastResetYear'] as int? ?? 0;
+    final now = DateTime.now();
+    
+    // Jika bulan/tahun berbeda, reset counter
+    if (lastResetMonth != now.month || lastResetYear != now.year) {
+      await walletRef.update({
+        'monthlyIncome': 0.0,
+        'monthlyExpense': 0.0,
+        'lastResetMonth': now.month,
+        'lastResetYear': now.year,
+      });
+    }
+  }
+
+  /// Reset semua wallet counters jika perlu
+  Future<void> resetAllWalletCountersIfNeeded() async {
+    if (_userId == null) return;
+    
+    final wallets = await getWalletsOnce();
+    final now = DateTime.now();
+    
+    WriteBatch batch = _db.batch();
+    bool needsBatch = false;
+    
+    for (var wallet in wallets) {
+      if (wallet.needsMonthlyReset()) {
+        final walletRef = _db.collection('users').doc(_userId).collection('wallets').doc(wallet.id);
+        batch.update(walletRef, {
+          'monthlyIncome': 0.0,
+          'monthlyExpense': 0.0,
+          'lastResetMonth': now.month,
+          'lastResetYear': now.year,
+        });
+        needsBatch = true;
+      }
+    }
+    
+    if (needsBatch) {
+      await batch.commit();
+    }
+  }
+
+  /// [OPTIMASI] Get monthly summary dari counters (1 read per wallet, bukan ratusan)
+  Stream<Map<String, double>> getMonthlySummaryFromCounters(List<String> walletIds) {
+    if (_userId == null) return Stream.value({'income': 0, 'expense': 0, 'difference': 0});
+    
+    return getWallets().map((wallets) {
+      double totalIncome = 0;
+      double totalExpense = 0;
+      
+      final now = DateTime.now();
+      
+      for (var wallet in wallets) {
+        // Filter by selected wallets if specified
+        if (walletIds.isNotEmpty && !walletIds.contains(wallet.id)) {
+          continue;
+        }
+        
+        // Hanya hitung jika counter masih valid (bulan ini)
+        if (wallet.lastResetMonth == now.month && wallet.lastResetYear == now.year) {
+          totalIncome += wallet.monthlyIncome;
+          totalExpense += wallet.monthlyExpense;
+        }
+      }
+      
+      return {
+        'income': totalIncome,
+        'expense': totalExpense,
+        'difference': totalIncome - totalExpense,
+      };
+    });
+  }
+
+  // ========================================
+  // WALLET STATS (tetap query, untuk daily)
+  // ========================================
+
   Stream<Map<String, double>> getWalletStatsStream(String walletId, String preference) {
     if (_userId == null) return Stream.value({'income': 0, 'expense': 0});
     DateTime now = DateTime.now();
@@ -159,6 +280,7 @@ class FirestoreService {
       .where('walletId', isEqualTo: walletId)
       .where('transactionDate', isGreaterThanOrEqualTo: start)
       .where('transactionDate', isLessThanOrEqualTo: end)
+      .limit(100) // [OPTIMASI] Limit untuk hemat reads
       .snapshots()
       .map((snapshot) {
         double income = 0; double expense = 0;
@@ -176,17 +298,24 @@ class FirestoreService {
     });
   }
 
-  Stream<List<Transaction>> getTransactions(String walletId, DateTimeRange dateRange) {
+  // ========================================
+  // TRANSACTION OPERATIONS
+  // ========================================
+
+  // [OPTIMASI] Dengan limit dan pagination
+  Stream<List<Transaction>> getTransactions(String walletId, DateTimeRange dateRange, {int limit = 50}) {
     if (_userId == null) return Stream.value([]);
     return _db.collection('users').doc(_userId).collection('transactions')
       .where('walletId', isEqualTo: walletId)
       .where('transactionDate', isGreaterThanOrEqualTo: dateRange.start)
       .where('transactionDate', isLessThanOrEqualTo: dateRange.end)
       .orderBy('transactionDate', descending: true)
+      .limit(limit) // [OPTIMASI] Limit
       .snapshots()
       .map((snapshot) => snapshot.docs.map((doc) => Transaction.fromFirestore(doc)).toList());
   }
   
+  // [LEGACY] Daily summary - masih perlu query (untuk backward compatibility)
   Stream<Map<String, double>> getDailySummary(List<String> walletIds) {
     if (_userId == null) return Stream.value({'income': 0, 'expense': 0, 'difference': 0});
     DateTime now = DateTime.now();
@@ -199,6 +328,7 @@ class FirestoreService {
     return query
       .where('transactionDate', isGreaterThanOrEqualTo: start)
       .where('transactionDate', isLessThanOrEqualTo: end)
+      .limit(100) // [OPTIMASI] Limit
       .snapshots()
       .map((snapshot) {
         double income = 0; double expense = 0;
@@ -218,42 +348,18 @@ class FirestoreService {
       });
   }
 
+  // [LEGACY] Monthly summary - gunakan getMonthlySummaryFromCounters untuk optimasi
    Stream<Map<String, double>> getMonthlySummary(List<String> walletIds) {
-    if (_userId == null) return Stream.value({'income': 0, 'expense': 0, 'difference': 0});
-    
-    DateTime now = DateTime.now();
-    DateTime start = DateTime(now.year, now.month, 1); // Awal bulan ini
-    DateTime end = DateTime(now.year, now.month + 1, 0, 23, 59, 59); // Akhir bulan ini
-
-    Query query = _db.collection('users').doc(_userId).collection('transactions');
-    
-    if (walletIds.isNotEmpty) {
-      query = query.where('walletId', whereIn: walletIds);
-    }
-    
-    return query
-      .where('transactionDate', isGreaterThanOrEqualTo: start)
-      .where('transactionDate', isLessThanOrEqualTo: end)
-      .snapshots()
-      .map((snapshot) {
-        double income = 0; double expense = 0;
-        for (var doc in snapshot.docs) {
-          final transaction = Transaction.fromFirestore(doc);
-          if (transaction.type == TransactionType.income) {
-            income += transaction.amount;
-          } else {
-            expense += transaction.amount;
-          }
-        }
-        return {
-          'income': income, 
-          'expense': expense,
-          'difference': income - expense
-        };
-      });
+    // [OPTIMASI] Gunakan counter-based method
+    return getMonthlySummaryFromCounters(walletIds);
   }
 
-  Stream<List<Transaction>> getFilteredTransactions({ required DateTimeRange dateRange, List<String> walletIds = const [], }) {
+  // [OPTIMASI] Dengan limit
+  Stream<List<Transaction>> getFilteredTransactions({ 
+    required DateTimeRange dateRange, 
+    List<String> walletIds = const [], 
+    int limit = 50,
+  }) {
     if (_userId == null) return Stream.value([]);
     Query query = _db.collection('users').doc(_userId).collection('transactions')
       .where('transactionDate', isGreaterThanOrEqualTo: dateRange.start)
@@ -263,11 +369,13 @@ class FirestoreService {
     }
     return query
       .orderBy('transactionDate', descending: true)
+      .limit(limit) // [OPTIMASI] Limit
       .snapshots()
       .map((snapshot) => snapshot.docs.map((doc) => Transaction.fromFirestore(doc)).toList());
   }
 
-   Stream<Map<String, double>> getMonthlyExpenseByCategory(List<String> walletIds) {
+  // [OPTIMASI] Dengan limit
+   Stream<Map<String, double>> getMonthlyExpenseByCategory(List<String> walletIds, {int limit = 100}) {
     if (_userId == null) return Stream.value({});
 
     DateTime now = DateTime.now();
@@ -283,8 +391,7 @@ class FirestoreService {
         query = query.where('walletId', whereIn: walletIds);
     }
 
-    // Cukup query seperti ini, tanpa .orderBy('transactionDate')
-    return query.snapshots().map((snapshot) {
+    return query.limit(limit).snapshots().map((snapshot) {
       Map<String, double> categoryExpenses = {};
       for (var doc in snapshot.docs) {
         final transaction = Transaction.fromFirestore(doc);
@@ -295,7 +402,7 @@ class FirestoreService {
     });
   }
 
-    Stream<Map<int, Map<String, double>>> getMonthlyTransactionSummary(String walletId) {
+    Stream<Map<int, Map<String, double>>> getMonthlyTransactionSummary(String walletId, {int limit = 100}) {
     if (_userId == null) return Stream.value({});
 
     DateTime now = DateTime.now();
@@ -307,16 +414,15 @@ class FirestoreService {
       .where('transactionDate', isGreaterThanOrEqualTo: startOfMonth)
       .where('transactionDate', isLessThanOrEqualTo: endOfMonth)
       .orderBy('transactionDate')
+      .limit(limit) // [OPTIMASI] Limit
       .snapshots()
       .map((snapshot) {
-        // Map<HariKe, { 'income': total, 'expense': total }>
         Map<int, Map<String, double>> dailyTotals = {};
 
         for (var doc in snapshot.docs) {
           final transaction = Transaction.fromFirestore(doc);
           final day = transaction.transactionDate.day;
 
-          // Inisialisasi map untuk hari tersebut jika belum ada
           dailyTotals.putIfAbsent(day, () => {'income': 0.0, 'expense': 0.0});
 
           if (transaction.type == TransactionType.income) {
@@ -328,7 +434,8 @@ class FirestoreService {
         return dailyTotals;
       });
   }
-  Stream<Map<int, List<Transaction>>> getMonthlyTransactionsGroupedByDay(String walletId) {
+
+  Stream<Map<int, List<Transaction>>> getMonthlyTransactionsGroupedByDay(String walletId, {int limit = 100}) {
     if (_userId == null) return Stream.value({});
 
     DateTime now = DateTime.now();
@@ -340,6 +447,7 @@ class FirestoreService {
       .where('transactionDate', isGreaterThanOrEqualTo: startOfMonth)
       .where('transactionDate', isLessThanOrEqualTo: endOfMonth)
       .orderBy('transactionDate')
+      .limit(limit) // [OPTIMASI] Limit
       .snapshots()
       .map((snapshot) {
         Map<int, List<Transaction>> groupedTransactions = {};
@@ -347,21 +455,27 @@ class FirestoreService {
           final transaction = Transaction.fromFirestore(doc);
           final day = transaction.transactionDate.day;
 
-          // Jika belum ada list untuk hari ini, buat baru
           if (!groupedTransactions.containsKey(day)) {
             groupedTransactions[day] = [];
           }
-          // Tambahkan transaksi ke list hari yang sesuai
           groupedTransactions[day]!.add(transaction);
         }
         return groupedTransactions;
       });
   }
   
-  Future<void> addTransaction({ required String walletId, required String description, required double amount, required TransactionType type, }) async {
+  // [OPTIMASI] addTransaction dengan update counter
+  Future<void> addTransaction({ 
+    required String walletId, 
+    required String description, 
+    required double amount, 
+    required TransactionType type, 
+  }) async {
     if (_userId == null) return;
+    
     final walletRef = _db.collection('users').doc(_userId).collection('wallets').doc(walletId);
     final transactionRef = _db.collection('users').doc(_userId).collection('transactions').doc();
+    
     final newTransaction = Transaction(
       id: transactionRef.id,
       description: description,
@@ -370,10 +484,23 @@ class FirestoreService {
       transactionDate: DateTime.now(),
       walletId: walletId,
     );
+    
+    // Cek apakah perlu reset counter dulu
+    await resetMonthlyCountersIfNeeded(walletId);
+    
     WriteBatch batch = _db.batch();
+    
+    // Set transaksi baru
     batch.set(transactionRef, newTransaction.toFirestore());
+    
+    // Update balance
     double amountChange = (type == TransactionType.income) ? amount : -amount;
     batch.update(walletRef, {'balance': FieldValue.increment(amountChange)});
+    
+    // [OPTIMASI] Update monthly counter
+    String counterField = (type == TransactionType.income) ? 'monthlyIncome' : 'monthlyExpense';
+    batch.update(walletRef, {counterField: FieldValue.increment(amount)});
+    
     await batch.commit();
   }
 }

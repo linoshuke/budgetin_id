@@ -14,7 +14,6 @@ import 'history_screen.dart';
 import 'statistics_screen.dart';
 import '/pages/wallets/wallet_screen.dart';
 
-// Widget HomePage dan _HomePageState tidak berubah, bisa disalin dari kode Anda
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
   @override
@@ -103,8 +102,18 @@ class _HomeContentState extends State<HomeContent> {
   @override
   void initState() {
     super.initState();
+    _initializeAndListen();
+  }
+
+  Future<void> _initializeAndListen() async {
+    final firestoreService = context.read<FirestoreService>();
+    
+    // [OPTIMASI] Reset monthly counters jika sudah bulan baru
+    await firestoreService.resetAllWalletCountersIfNeeded();
+    
     _listenToWallets();
   }
+
 
   @override
   void dispose() {
