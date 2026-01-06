@@ -18,27 +18,20 @@ class ApiException implements Exception {
   @override
   String toString() => message;
 }
-
-/// Service untuk berkomunikasi dengan Laravel API
 class ApiService {
-  // Ganti dengan URL Laravel API Anda
-  // Untuk development lokal: http://10.0.2.2:8000/api (Android Emulator)
-  // atau http://localhost:8000/api (Web/iOS Simulator)
-  static const String baseUrl = 'http://10.0.2.2:8000/api';
+  static const String baseUrl = 'http://10.65.1.114:8000/api';
   
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   static const String _tokenKey = 'auth_token';
   
   String? _authToken;
 
-  /// Get stored auth token
   Future<String?> getAuthToken() async {
     if (_authToken != null) return _authToken;
     _authToken = await _storage.read(key: _tokenKey);
     return _authToken;
   }
 
-  /// Set auth token
   Future<void> setAuthToken(String token) async {
     _authToken = token;
     await _storage.write(key: _tokenKey, value: token);
