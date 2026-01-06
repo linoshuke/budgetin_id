@@ -29,6 +29,7 @@ class Wallet {
     this.lastResetYear = 0,
   });
 
+  // Factory untuk parsing dari Firestore (backward compatibility)
   factory Wallet.fromFirestore(DocumentSnapshot doc) {
     Map data = doc.data() as Map<String, dynamic>;
 
@@ -55,8 +56,34 @@ class Wallet {
       lastResetYear: (data['lastResetYear'] as int?) ?? 0,
     );
   }
-  
-  // Method untuk mengubah instance Wallet menjadi Map untuk disimpan ke Firestore
+
+  // Factory untuk parsing dari Laravel API (JSON)
+  factory Wallet.fromJson(Map<String, dynamic> json) {
+    DateTime createdAtDate;
+    if (json['created_at'] != null) {
+      createdAtDate = DateTime.tryParse(json['created_at']) ?? DateTime.now();
+    } else if (json['createdAt'] != null) {
+      createdAtDate = DateTime.tryParse(json['createdAt']) ?? DateTime.now();
+    } else {
+      createdAtDate = DateTime.now();
+    }
+
+    return Wallet(
+      id: json['id']?.toString() ?? '',
+      walletName: json['walletName'] ?? json['wallet_name'] ?? 'Tanpa Nama',
+      balance: (json['balance'] as num?)?.toDouble() ?? 0.0,
+      displayPreference: json['displayPreference'] ?? json['display_preference'] ?? 'monthly',
+      createdAt: createdAtDate,
+      category: json['category'] ?? 'Lainnya',
+      location: json['location'] ?? 'Tidak Diketahui',
+      monthlyIncome: (json['monthlyIncome'] as num?)?.toDouble() ?? 0.0,
+      monthlyExpense: (json['monthlyExpense'] as num?)?.toDouble() ?? 0.0,
+      lastResetMonth: (json['lastResetMonth'] as int?) ?? 0,
+      lastResetYear: (json['lastResetYear'] as int?) ?? 0,
+    );
+  }
+
+  // Method untuk mengubah instance Wallet menjadi Map untuk Firestore
   Map<String, dynamic> toFirestore() {
     return {
       'walletName': walletName,
@@ -71,10 +98,53 @@ class Wallet {
       'lastResetYear': lastResetYear,
     };
   }
-  
+
+  // Method untuk mengubah instance Wallet menjadi Map untuk Laravel API
+  Map<String, dynamic> toJson() {
+    return {
+      'walletName': walletName,
+      'category': category,
+      'location': location,
+      'balance': balance,
+      'displayPreference': displayPreference,
+      'monthlyIncome': monthlyIncome,
+      'monthlyExpense': monthlyExpense,
+      'lastResetMonth': lastResetMonth,
+      'lastResetYear': lastResetYear,
+    };
+  }
+
   // Helper untuk cek apakah counter perlu di-reset (bulan baru)
   bool needsMonthlyReset() {
     final now = DateTime.now();
     return lastResetMonth != now.month || lastResetYear != now.year;
+  }
+
+  Wallet copyWith({
+    String? id,
+    String? walletName,
+    double? balance,
+    String? displayPreference,
+    DateTime? createdAt,
+    String? category,
+    String? location,
+    double? monthlyIncome,
+    double? monthlyExpense,
+    int? lastResetMonth,
+    int? lastResetYear,
+  }) {
+    return Wallet(
+      id: id ?? this.id,
+      walletName: walletName ?? this.walletName,
+      balance: balance ?? this.balance,
+      displayPreference: displayPreference ?? this.displayPreference,
+      createdAt: createdAt ?? this.createdAt,
+      category: category ?? this.category,
+      location: location ?? this.location,
+      monthlyIncome: monthlyIncome ?? this.monthlyIncome,
+      monthlyExpense: monthlyExpense ?? this.monthlyExpense,
+      lastResetMonth: lastResetMonth ?? this.lastResetMonth,
+      lastResetYear: lastResetYear ?? this.lastResetYear,
+    );
   }
 }

@@ -196,7 +196,7 @@ class _HistoryPageState extends State<HistoryPage> {
                           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           child: ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: (isIncome ? Colors.green : Colors.red).withOpacity(0.1),
+                              backgroundColor: (isIncome ? Colors.green : Colors.red).withValues(alpha: 0.1),
                               child: Icon(
                                 isIncome ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
                                 color: isIncome ? Colors.green : Colors.red,

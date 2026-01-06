@@ -220,7 +220,7 @@ class _WalletDetailScreenState extends State<WalletDetailScreen> {
                           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           child: ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: (isIncome ? Colors.green : Colors.red).withOpacity(0.1),
+                              backgroundColor: (isIncome ? Colors.green : Colors.red).withValues(alpha: 0.1),
                               child: Icon(
                                 isIncome ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
                                 color: isIncome ? Colors.green : Colors.red,
@@ -271,7 +271,7 @@ class _WalletDetailScreenState extends State<WalletDetailScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.shade900.withOpacity(0.3),
+            color: Colors.blue.shade900.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -282,7 +282,7 @@ class _WalletDetailScreenState extends State<WalletDetailScreen> {
         children: [
           Text(
             "Total Saldo Saat Ini",
-            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 15),
+            style: TextStyle(color: Colors.white.withValues (alpha: 0.8), fontSize: 15),
           ),
           const SizedBox(height: 4),
           Text(
@@ -316,7 +316,7 @@ class _WalletDetailScreenState extends State<WalletDetailScreen> {
               color: Colors.white70,
               selectedColor: Colors.blue.shade800,
               fillColor: Colors.white,
-              splashColor: Colors.white.withOpacity(0.2),
+              splashColor: Colors.white.withValues(alpha: 0.2),
               constraints: BoxConstraints(minHeight: 40.0, minWidth: (MediaQuery.of(context).size.width - 82) / 2),
               children: const [
                 Padding(
